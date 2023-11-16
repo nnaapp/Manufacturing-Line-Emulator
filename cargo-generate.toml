@@ -14,6 +14,3 @@ prompt = "Project description"
 
 [conditional.'crate_type == "lib"']
 ignore = [ "src/main.rs" ]
-
-[conditional.'crate_type == "bin"']
-ignore = [ "src/lib.rs" ]
