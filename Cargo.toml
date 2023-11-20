@@ -1,5 +1,6 @@
 [package]
-name = "Manufacturing Line Emulator"
+name = "manufacturing-emu"
+version = "0.0.1"
 description = "Emulator for manufacturing line layouts"
 repository = "https://github.com/nnaapp/Manufacturing-Line-Emulator"
 
