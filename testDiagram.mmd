@@ -1,0 +1,16 @@
+%%{init: {'theme':'forest'}}%%
+
+graph LR
+sim(Simulation)
+opc(Broker/OPC Server)
+tar(Target Software/ Visualizer)
+sim<--->opc--->tar
+
+
+classDef green fill:#a9e37c
+classDef blue fill:#a3a3f0
+classDef red fill:#f08784
+
+class sim green
+class opc blue
+class tar red
