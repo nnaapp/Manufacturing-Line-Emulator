@@ -4,41 +4,41 @@ use std::time::{UNIX_EPOCH,SystemTime,Duration};
 
 struct Machine
 {
-    deltaTime: f64,
-    tickSpeed: i64,
+    deltaTime: u128, // deltaTime is in milliseconds
+    tickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     failChance: f32,
 }
 impl Machine 
 {
-    fn new(tickSpeed: i64, failChance: f32) -> Self
+    fn new(tickSpeed: u128, failChance: f32) -> Self
     {
-        return Self { deltaTime: 0.0, tickSpeed: tickSpeed, failChance: failChance };
+        return Self { deltaTime: 0, tickSpeed, failChance };
     }
 
-    fn update(&self)
+    fn update(&mut self)
     {
         println!("Update func");
+        self.deltaTime -= self.tickSpeed;
     }
 }
 
 fn main() 
 {
-    let myMachine = Machine::new(5, 0.01);
+    let mut myMachine = Machine::new(500, 0.01);
 
     let mut start = SystemTime::now();
-    let mut iterTime = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    let mut prevTime = iterTime;
-    let mut deltaTime:u128 = 0;
+    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let mut prevTime:Duration = iterTime;
     loop
     {   
         start = SystemTime::now();
         iterTime = start.duration_since(UNIX_EPOCH).expect("Time went backwards");     
-        deltaTime += iterTime.as_millis() - prevTime.as_millis();
+
+        myMachine.deltaTime += iterTime.as_millis() - prevTime.as_millis();
         
-        if deltaTime >= 1000
+        if myMachine.deltaTime >= myMachine.tickSpeed
         {
-            println!("Test");
-            deltaTime -= 1000;
+            myMachine.update();
         }
 
         prevTime = iterTime;
