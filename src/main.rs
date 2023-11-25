@@ -4,17 +4,25 @@ use std::time::{UNIX_EPOCH,SystemTime,Duration};
 extern crate rand;
 use rand::{Rng, rngs::ThreadRng};
 
+#[derive(PartialEq, Eq)]
+enum OPCState
+{
+    PRODUCING,
+    FAULTED,
+}
+
 struct Machine
 {
     deltaTime: u128, // deltaTime is in milliseconds
     tickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     failChance: f32,
+    state: OPCState,
 }
 impl Machine 
 {
-    fn new(tickSpeed: u128, failChance: f32) -> Self
+    fn new(tickSpeed: u128, failChance: f32, initialState: OPCState) -> Self
     {
-        return Self { deltaTime: 0, tickSpeed, failChance };
+        return Self { deltaTime: 0, tickSpeed, failChance, state: initialState };
     }
 
     fn update(&mut self, deltaTime: u128, rng: &mut ThreadRng)
@@ -28,18 +36,29 @@ impl Machine
         }
 
         // Execute a tick
-        println!("Update func");
         self.deltaTime -= self.tickSpeed;
-        if rng.gen_range(0.0..1.0) <= self.failChance
+
+        match self.state
         {
-            println!("Failure");
+            OPCState::PRODUCING=>
+            {
+                println!("Producing.");
+                if rng.gen_range(0.0..1.0) <= self.failChance
+                {
+                    self.state = OPCState::FAULTED;
+                }
+            }
+            OPCState::FAULTED=>
+            {
+                println!("Faulted.");
+            }
         }
     }
 }
 
 fn main() 
 {
-    let mut myMachine = Machine::new(500, 0.01);
+    let mut myMachine = Machine::new(2000, 0.25, OPCState::PRODUCING);
 
     // Master random number generator, which is passed to machines to use for faults
     let mut rng = rand::thread_rng();
