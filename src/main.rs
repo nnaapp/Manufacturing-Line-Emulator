@@ -75,7 +75,7 @@ fn main()
     // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
     // deltaTime represents milliseconds time between previous and current iteration of loop.
     let mut start = SystemTime::now();
-    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");
     let mut prevTime:Duration = iterTime;
     let mut deltaTime:u128;
 
@@ -83,11 +83,11 @@ fn main()
     {   
         // Find deltatime between loop iterations
         start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Time went backwards");     
+        iterTime = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");     
         deltaTime = iterTime.as_millis() - prevTime.as_millis();
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
-        myMachine.update(deltaTime, rng.gen_range(0..std::i32::MAX));
+        myMachine.update(deltaTime, rng.gen_range(0..=std::i32::MAX));
 
         // Log system time at the start of this iteration, for use in next iteration
         prevTime = iterTime;
