@@ -1,0 +1,105 @@
+{
+  "manufacturingLine": {
+    "name": "Line 1",
+    "description": "A simple manufacturing line for product assembly",
+    "machines": [
+      {
+        "id": 1,
+        "name": "bottler",
+        "type": "packing",
+        "status": "running",
+        "parameters": {
+            "machineSpeed": 800,
+            "maxLoad": 40,
+            "maxInput": 60, 
+            "faultRate": 0.04,
+            "goodOut": 20
+        }
+      },
+      {
+        "id": 2,
+        "name": "capper",
+        "type": "packing",
+        "status": "faulted",
+        "parameters": {
+          "machineSpeed": 0,
+          "maxLoad": 0,
+          "maxInput": 0, 
+          "faultRate": 0.09,
+          "goodOut": 0
+        }
+      },
+      {
+        "id": 3,
+        "name": "inspection",
+        "type": "servicing",
+        "status": "starved",
+        "parameters": {
+          "machineSpeed": 500,
+          "maxLoad": 20,
+          "maxInput": 25, 
+          "faultRate": 0.06,
+          "goodOut": 7
+        }
+      },
+      {
+        "id": 4,
+        "name": "filter",
+        "type": "servicing",
+        "status": "blocked",
+        "parameters": {
+          "machineSpeed": 700,
+          "maxLoad": 45,
+          "maxInput": 55, 
+          "faultRate": 0.05,
+          "goodOut": 38
+        }
+      },
+      {
+        "id": 5,
+        "name": "rinser",
+        "type": "servicing",
+        "status": "running",
+        "parameters": {
+          "machineSpeed": 700,
+          "maxLoad": 45,
+          "maxInput": 50, 
+          "faultRate": 0.04,
+          "goodOut": 35
+        }
+      },
+      {
+        "id": 6,
+        "name": "retort",
+        "type": "servicing",
+        "status": "starved",
+        "parameters": {
+          "machineSpeed": 450,
+          "maxLoad": 20,
+          "maxInput": 25, 
+          "faultRate": 0.05,
+          "goodOut": 10
+        }
+      },
+      {
+        "id": 7,
+        "name": "casePack",
+        "type": "packing",
+        "status": "faulted",
+        "parameters": {
+          "machineSpeed": 0,
+          "maxLoad": 0,
+          "maxInput": 0, 
+          "faultRate": 0.08,
+          "goodOut": 0
+        }
+      }
+    ],
+    "faultTypes": [
+        "forcedShutdown",
+        "faultyEquipment",
+        "starvedInput",
+        "lineHalted"
+    ]
+  }
+}
