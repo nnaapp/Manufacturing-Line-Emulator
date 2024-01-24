@@ -16,17 +16,20 @@ struct Machine
     deltaTime: u128, // deltaTime is in milliseconds
     tickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     failChance: f32,
+    cost: i32,
+    throughput: i32,
     state: OPCState,
-    output: Option<Box<Belt>>,
+    inputID: usize,
+    outputID: usize,
 }
-impl Machine 
+impl Machine
 {
-    fn new(tickSpeed: u128, failChance: f32, initialState: OPCState) -> Self
+    fn new(tickSpeed: u128, failChance: f32, cost: i32, throughput: i32, initialState: OPCState, inputID: usize, outputID: usize) -> Self
     {
-        return Self { deltaTime: 0, tickSpeed, failChance, state: initialState, output: None };
+        return Self { deltaTime: 0, tickSpeed, failChance, cost, throughput, state: initialState, inputID, outputID };
     }
 
-    fn update(&mut self, deltaTime: u128, seed: i32)
+    fn update(&mut self, deltaTime: u128, seed: i32, belts: &mut Vec<Belt>)
     {
         self.deltaTime += deltaTime;
         
@@ -40,20 +43,26 @@ impl Machine
         self.deltaTime -= self.tickSpeed;
         match self.state
         {
-            OPCState::PRODUCING=>self.producing(seed),
+            OPCState::PRODUCING=>self.producing(seed, belts),
             OPCState::FAULTED=>self.faulted(),
         }
     }
 
     // Function for producing state
-    fn producing(&mut self, seed: i32)
+    fn producing(&mut self, seed: i32, belts: &mut Vec<Belt>)
     {
         println!("Producing.");
-        if let Some(belt) = &mut self.output
+        if belts[self.inputID].spawner
         {
-            belt.push(1);
-            println!("{}", belt.count);
+            belts[self.outputID].push(self.throughput);
         }
+        else if belts[self.inputID].check_empty(self.cost)
+        {
+            belts[self.inputID].pop(self.cost);
+            belts[self.outputID].push(self.throughput);
+        }
+        println!("{}", belts[self.outputID].count);
+
         // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
         if (seed % 1000) as f32 / 1000.0 <= self.failChance
         {
@@ -72,15 +81,17 @@ impl Machine
 
 struct Belt
 {
+    spawner: bool, // If a belt is a spawner, it has infinite resources
     capacity: i32,
     count: i32,
-    output: Option<Box<Machine>>,
+    // input: Option<Box<Machine>>,
+    // output: Option<Box<Machine>>,
 }
 impl Belt
 {
-    fn new(capacity: i32) -> Self
+    fn new(spawner: bool, capacity: i32) -> Self
     {
-        return Self { capacity, count: 0, output: None };
+        return Self { spawner, capacity, count: 0 };
     }
 
     // True = not full, False = full
@@ -126,8 +137,14 @@ impl Belt
 
 fn main() 
 {
-    let mut myMachine = Machine::new(750, 0.05, OPCState::PRODUCING);
-    myMachine.output = Some(Box::new(Belt::new(5)));
+    let mut machines = Vec::with_capacity(2);
+    machines.push(Machine::new(750, 0.05, 1, 1, OPCState::PRODUCING, 0, 1));
+    machines.push(Machine::new(750, 0.05, 1, 1, OPCState::PRODUCING, 1, 2));
+    
+    let mut belts = Vec::with_capacity(3);
+    belts.push(Belt::new(true, 999));
+    belts.push(Belt::new(false, 5));
+    belts.push(Belt::new(false, 999));
 
     // Master random number generator, which is passed to machines to use for faults
     let mut rng = rand::thread_rng();
@@ -148,7 +165,10 @@ fn main()
         deltaTime = iterTime.as_millis() - prevTime.as_millis();
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
-        myMachine.update(deltaTime, rng.gen_range(0..=std::i32::MAX));
+        for i in 0..2
+        {
+            machines[i].update(deltaTime, rng.gen_range(0..=std::i32::MAX), &mut belts);
+        }
 
         // Log system time at the start of this iteration, for use in next iteration
         prevTime = iterTime;
