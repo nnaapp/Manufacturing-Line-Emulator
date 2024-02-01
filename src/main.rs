@@ -10,8 +10,7 @@ use serde_json::{Result, Value};
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
-use std::io::Write;
-use std::io::Read;
+use std::io::{Write, Read};
 
 #[derive(Clone, PartialEq, Eq)]
 enum OPCState
@@ -46,6 +45,10 @@ struct Machine
     outBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>,
     capacity: usize, // Capacity of EACH inventory
     inventory: Vec<usize>, // Vector of inventories, one per output lane
+
+    producedCount: usize,
+    consumedCount: usize,
+    stateChangeCount: usize,
 }
 impl Machine
 {
@@ -70,6 +73,9 @@ impl Machine
             outBehavior: None,
             capacity,
             inventory: inventories,
+            consumedCount: 0,
+            producedCount: 0,
+            stateChangeCount: 0,
         };
         return newMachine;
     }
@@ -124,11 +130,14 @@ impl Machine
             if outBehavior(self, machines)
             {
                 println!("ID {}: Pushed", self.id);
+                self.producedCount += self.throughput;
+                self.consumedCount += self.cost;
             }
             else
             {
                 // enough input, but can't output
                 self.state = OPCState::BLOCKED;
+                self.stateChangeCount += 1;
                 println!("ID {}: Blocked, no room to output", self.id);
             }
         }
@@ -136,6 +145,7 @@ impl Machine
         {
             // not enough input
             self.state = OPCState::STARVED; 
+            self.stateChangeCount += 1;
             println!("ID {}: Starved, not enough supply", self.id);
         }
 
@@ -145,6 +155,7 @@ impl Machine
             // Debug logging to show the seed when the machine faults
             println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.failChance);
             self.state = OPCState::FAULTED;
+            self.stateChangeCount += 1;
         }
     }
 
@@ -173,6 +184,9 @@ impl Machine
             {
                 println!("ID {}: Pushed, Switched to Producing", self.id);
                 self.state = OPCState::PRODUCING;
+                self.stateChangeCount += 1;
+                self.producedCount += self.throughput;
+                self.consumedCount += self.cost;
             }
             else
             {
@@ -183,6 +197,7 @@ impl Machine
         else
         {
             //could go starved but already blocked, which should be priority?
+            // track state change too
         }
     }
 
@@ -204,12 +219,16 @@ impl Machine
             {
                 println!("ID {}: Pushed, Switched to Producing", self.id);
                 self.state = OPCState::PRODUCING;
+                self.stateChangeCount += 1;
+                self.producedCount += self.throughput;
+                self.consumedCount += self.cost;
             }
             else
             {
                 //If output blocked change to blocked state
                 println!("ID {}: Output is Blocked, changing state.", self.id);
                 self.state = OPCState::BLOCKED;
+                self.stateChangeCount += 1;
             }
         }
         else
@@ -387,12 +406,12 @@ fn read_json_file(file_path: &str) -> String {
 }
 
 
-fn main() -> std::io::Result <()>
+fn main() -> std::io::Result<()>
 {
     // Debug backtrace info
     env::set_var("RUST_BACKTRACE", "1");
 
-let file_path = "factory.json";
+    let file_path = "factory.json";
     let json_data = read_json_file(file_path);
     let data: Data = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
@@ -402,7 +421,8 @@ let file_path = "factory.json";
     println!("Runtime: {} seconds", data.factory.Runtime);
     println!("");
 
-    for i in 0..3 {
+    for i in 0..3 
+    {
         
         println!("Machine ID: {}", data.factory.Machines[i].id);
         println!("Tick-Speed: {}", data.factory.Machines[i].tickSpeed);
@@ -453,7 +473,7 @@ let file_path = "factory.json";
     let mut timePassed: u128 = 0; // milliseconds passed 
     
     //Simulation speed
-    let simSpeed: f64 = 1.0;
+    let simSpeed: f64 = 2.0;
     
     // Master random number generator, which is passed to machines to use for faults
     let mut rng = rand::thread_rng();
@@ -487,12 +507,14 @@ let file_path = "factory.json";
         // Log system time at the start of this iteration, for use in next iteration
         prevTime = iterTime;
     }
-    let mut file = File::create("log.txt")?;
-    for i in 0..3 {
+    let file = File::create("log.txt")?;
+    for id in ids.iter()
+    {
 
-        writeln!(&file, "Machine ID: {}", data.factory.Machines[i].id)?;
-        writeln!(&file, "Machine Output: {}", data.factory.Machines[i].throughput)?;
-        writeln!(&file, "State Changes: {}", data.factory.Machines[i].state)?;
+        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
+        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
+        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").producedCount)?;
+        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").stateChangeCount)?;
         writeln!(&file, "")?;
 
     }
