@@ -21,7 +21,7 @@ enum OPCState
     STARVED,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 struct MachineLaneID
 {
     machineID: usize,
@@ -31,7 +31,7 @@ struct MachineLaneID
 #[derive(Clone)]
 struct Machine
 {
-    id: u32,
+    id: usize,
     deltaTime: u128, // deltaTime is in milliseconds
     tickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     failChance: f32,
@@ -52,7 +52,7 @@ struct Machine
 }
 impl Machine
 {
-    fn new(id: u32, tickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
+    fn new(id: usize, tickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
         inIDs.reserve(inputLanes);
@@ -364,38 +364,32 @@ impl Machine
 }
 
 #[derive(Debug, Deserialize)]
-struct MachineInputID {
-    machineID: u32,
-    laneID: u32,
-}
-
-#[derive(Debug, Deserialize)]
-struct Machines {
-    id: u32,
-    tickSpeed: u32,
-    failChance: f64,
-    cost: u32,
-    throughput: u32,
+struct JSONMachine {
+    id: usize,
+    tickSpeed: u128,
+    failChance: f32,
+    cost: usize,
+    throughput: usize,
     state: String,
-    inputLanes: u32,
-    inputID: Vec<MachineInputID>,
+    inputLanes: usize,
+    inputID: Vec<MachineLaneID>,
     inBehavior: String,
-    outputLanes: u32,
+    outputLanes: usize,
     outBehavior: String,
-    capacity: u32,
+    capacity: usize,
 }
 
 #[derive(Debug, Deserialize)]
-struct Factory {
+struct JSONFactory {
     name: String,
     description: String,
     Runtime: u32,
-    Machines: Vec<Machines>,
+    Machines: Vec<JSONMachine>,
 }
 
 #[derive(Debug, Deserialize)]
-struct Data {
-    factory: Factory,
+struct JSONData {
+    factory: JSONFactory,
 }
 
 fn read_json_file(file_path: &str) -> String {
@@ -413,61 +407,104 @@ fn main() -> std::io::Result<()>
 
     let file_path = "factory.json";
     let json_data = read_json_file(file_path);
-    let data: Data = serde_json::from_str(&json_data).expect("Failed to parse JSON");
+    let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
-    
     println!("Factory Name: {}", data.factory.name);
     println!("Description: {}", data.factory.description);
     println!("Runtime: {} seconds", data.factory.Runtime);
     println!("");
 
-    for i in 0..3 
+    let mut machines = HashMap::<usize, Machine>::new();
+    let mut ids = Vec::<usize>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
+
+    for machine in data.factory.Machines 
     {
+        let mut state = OPCState::PRODUCING;
+
+        match machine.state.to_lowercase().as_str()
+        {
+            "producing" => state = OPCState::PRODUCING,
+            "faulted" => state = OPCState::FAULTED,
+            "blocked" => state = OPCState::BLOCKED,
+            "starved" => state = OPCState::STARVED,
+            _ => (),
+        }
         
-        println!("Machine ID: {}", data.factory.Machines[i].id);
-        println!("Tick-Speed: {}", data.factory.Machines[i].tickSpeed);
-        println!("failChance: {}", data.factory.Machines[i].failChance);
-        println!("Cost: {}", data.factory.Machines[i].cost);
-        println!("Throughput: {}", data.factory.Machines[i].throughput);
-        println!("State: {}", data.factory.Machines[i].state);
-        println!("Input Lanes: {}", data.factory.Machines[i].inputLanes);
-        println!("Input ID: {:?}, {:?}", data.factory.Machines[i].inputID[0].machineID, data.factory.Machines[i].inputID[0].laneID);
-        println!("Input Behavior: {}", data.factory.Machines[i].inBehavior);
-        println!("Output Lanes: {}", data.factory.Machines[i].outputLanes);
-        println!("Output Behavior: {}", data.factory.Machines[i].outBehavior);
-        println!("Capacity: {}", data.factory.Machines[i].capacity);
-        println!("");
+        let mut newMachine = Machine::new(
+            machine.id,
+            machine.tickSpeed,
+            machine.failChance,
+            machine.cost,
+            machine.throughput,
+            state,
+            machine.inputLanes,
+            machine.outputLanes,
+            machine.capacity
+        );
+
+        newMachine.inputID = machine.inputID;
+
+        let mut inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_pull;
+        let mut outBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_push;
+        match machine.inBehavior.to_lowercase().as_str()
+        {
+            "spawner" => inBehavior = Machine::spawner_input,
+            "default" => inBehavior = Machine::multilane_pull,
+            _ => (),
+        }
+        match machine.outBehavior.to_lowercase().as_str()
+        {
+            "consumer" => outBehavior = Machine::consumer_output,
+            "default" => outBehavior = Machine::multilane_push,
+            _ => (),
+        }
+
+        newMachine.set_behavior(inBehavior, outBehavior);
+
+        ids.push(machine.id);
+        machines.insert(machine.id, newMachine);
+
+        // println!("Machine ID: {}", data.factory.Machines[i].id);
+        // println!("Tick-Speed: {}", data.factory.Machines[i].tickSpeed);
+        // println!("failChance: {}", data.factory.Machines[i].failChance);
+        // println!("Cost: {}", data.factory.Machines[i].cost);
+        // println!("Throughput: {}", data.factory.Machines[i].throughput);
+        // println!("State: {}", data.factory.Machines[i].state);
+        // println!("Input Lanes: {}", data.factory.Machines[i].inputLanes);
+        // println!("Input ID: {:?}, {:?}", data.factory.Machines[i].inputID[0].machineID, data.factory.Machines[i].inputID[0].laneID);
+        // println!("Input Behavior: {}", data.factory.Machines[i].inBehavior);
+        // println!("Output Lanes: {}", data.factory.Machines[i].outputLanes);
+        // println!("Output Behavior: {}", data.factory.Machines[i].outBehavior);
+        // println!("Capacity: {}", data.factory.Machines[i].capacity);
+        // println!("");
 
     }
     
     // This is VERY work in progress, this is just a test case
-    let mut machines = HashMap::<usize, Machine>::new();
-    let mut ids = Vec::<usize>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
+    // machines.insert(0, Machine::new(0, 500, 0.0, 1, 3, OPCState::PRODUCING, 1, 3, 6));
+    // ids.push(0);
+    // let mut curMachine: &mut Machine = machines.get_mut(&0).unwrap();
+    // curMachine.set_behavior(Machine::spawner_input, Machine::multilane_push);
 
-    machines.insert(0, Machine::new(0, 500, 0.0, 1, 3, OPCState::PRODUCING, 1, 3, 6));
-    ids.push(0);
-    let mut curMachine: &mut Machine = machines.get_mut(&0).unwrap();
-    curMachine.set_behavior(Machine::spawner_input, Machine::multilane_push);
+    // machines.insert(14, Machine::new(14, 1000, 0.0, 6, 2, OPCState::PRODUCING, 3, 2, 4));
+    // ids.push(14);
+    // curMachine = machines.get_mut(&14).unwrap();
+    // curMachine.connect(0, 0);
+    // curMachine.connect(0, 1);
+    // curMachine.connect(0, 2);
+    // curMachine.set_behavior(Machine::multilane_pull, Machine::multilane_push);
 
-    machines.insert(14, Machine::new(14, 1000, 0.0, 6, 2, OPCState::PRODUCING, 3, 2, 4));
-    ids.push(14);
-    curMachine = machines.get_mut(&14).unwrap();
-    curMachine.connect(0, 0);
-    curMachine.connect(0, 1);
-    curMachine.connect(0, 2);
-    curMachine.set_behavior(Machine::multilane_pull, Machine::multilane_push);
+    // machines.insert(2, Machine::new(2, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
+    // ids.push(2);
+    // curMachine = machines.get_mut(&2).unwrap();
+    // curMachine.connect(14, 0);
+    // curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
 
-    machines.insert(2, Machine::new(2, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
-    ids.push(2);
-    curMachine = machines.get_mut(&2).unwrap();
-    curMachine.connect(14, 0);
-    curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
-
-    machines.insert(3, Machine::new(3, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
-    ids.push(3);
-    curMachine = machines.get_mut(&3).unwrap();
-    curMachine.connect(14, 1);
-    curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
+    // machines.insert(3, Machine::new(3, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
+    // ids.push(3);
+    // curMachine = machines.get_mut(&3).unwrap();
+    // curMachine.connect(14, 1);
+    // curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
 
     let runtime = 10 * 1000;  // milliseconds needed to pass to stop
     let mut timePassed: u128 = 0; // milliseconds passed 

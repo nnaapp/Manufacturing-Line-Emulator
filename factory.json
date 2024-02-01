@@ -14,34 +14,34 @@
         "inputLanes": 1, 
         "inputID": [
           {
-            "machineID": 5 ,
-            "laneID": 9
+            "machineID": 0,
+            "laneID": 0
           }
         ], 
         "inBehavior": "SPAWNER", 
         "outputLanes": 1,
-        "outBehavior": "CONSUMER",
+        "outBehavior": "DEFAULT",
         "capacity": 2
 
         },
         {
           "id": 1,
-          "tickSpeed": 500,
+          "tickSpeed": 1000,
           "failChance": 0.0,
           "cost": 2,
           "throughput": 2,
           "state": "PRODUCING",
-          "inputLanes": 3, 
+          "inputLanes": 1, 
           "inputID": [
             {
-              "machineID": 4 ,
-              "laneID": 7
+              "machineID": 0 ,
+              "laneID": 0
             }
           ], 
-          "inBehavior": "CONSUMER", 
-          "outputLanes": 2,
-          "outBehavior": "CONSUMER",
-          "capacity": 1
+          "inBehavior": "DEFAULT", 
+          "outputLanes": 1,
+          "outBehavior": "DEFAULT",
+          "capacity": 2
         },
         {
           "id": 2,
@@ -50,17 +50,17 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "inputLanes": 2, 
+          "inputLanes": 1, 
           "inputID": [
             {
-              "machineID": 3 ,
-              "laneID": 8
+              "machineID": 1 ,
+              "laneID": 0
             }
           ], 
-          "inBehavior": "CONSUMER", 
+          "inBehavior": "DEFAULT", 
           "outputLanes": 1,
-          "outBehavior": "CONSUMER",
-          "capacity": 3
+          "outBehavior": "DEFAULT",
+          "capacity": 8
         }
     ]
   }
