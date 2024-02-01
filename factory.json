@@ -1,105 +1,67 @@
 {
-  "manufacturingLine": {
-    "name": "Line 1",
+  "factory": {
+    "name": "N/A",
     "description": "A simple manufacturing line for product assembly",
-    "machines": [
+    "Runtime": 10,
+    "Machines": [
       {
-        "id": 1,
-        "name": "bottler",
-        "type": "packing",
-        "status": "running",
-        "parameters": {
-            "machineSpeed": 800,
-            "maxLoad": 40,
-            "maxInput": 60, 
-            "faultRate": 0.04,
-            "goodOut": 20
+        "id": 0,
+        "tickSpeed": 500,
+        "failChance": 0.0,
+        "cost": 1,
+        "throughput": 1,
+        "state": "PRODUCING",
+        "inputLanes": 1, 
+        "inputID": [
+          {
+            "machineID": 5 ,
+            "laneID": 9
+          }
+        ], 
+        "inBehavior": "SPAWNER", 
+        "outputLanes": 1,
+        "outBehavior": "CONSUMER",
+        "capacity": 2
+
+        },
+        {
+          "id": 1,
+          "tickSpeed": 500,
+          "failChance": 0.0,
+          "cost": 2,
+          "throughput": 2,
+          "state": "PRODUCING",
+          "inputLanes": 3, 
+          "inputID": [
+            {
+              "machineID": 4 ,
+              "laneID": 7
+            }
+          ], 
+          "inBehavior": "CONSUMER", 
+          "outputLanes": 2,
+          "outBehavior": "CONSUMER",
+          "capacity": 1
+        },
+        {
+          "id": 2,
+          "tickSpeed": 500,
+          "failChance": 0.0,
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "inputLanes": 2, 
+          "inputID": [
+            {
+              "machineID": 3 ,
+              "laneID": 8
+            }
+          ], 
+          "inBehavior": "CONSUMER", 
+          "outputLanes": 1,
+          "outBehavior": "CONSUMER",
+          "capacity": 3
         }
-      },
-      {
-        "id": 2,
-        "name": "capper",
-        "type": "packing",
-        "status": "faulted",
-        "parameters": {
-          "machineSpeed": 0,
-          "maxLoad": 0,
-          "maxInput": 0, 
-          "faultRate": 0.09,
-          "goodOut": 0
-        }
-      },
-      {
-        "id": 3,
-        "name": "inspection",
-        "type": "servicing",
-        "status": "starved",
-        "parameters": {
-          "machineSpeed": 500,
-          "maxLoad": 20,
-          "maxInput": 25, 
-          "faultRate": 0.06,
-          "goodOut": 7
-        }
-      },
-      {
-        "id": 4,
-        "name": "filter",
-        "type": "servicing",
-        "status": "blocked",
-        "parameters": {
-          "machineSpeed": 700,
-          "maxLoad": 45,
-          "maxInput": 55, 
-          "faultRate": 0.05,
-          "goodOut": 38
-        }
-      },
-      {
-        "id": 5,
-        "name": "rinser",
-        "type": "servicing",
-        "status": "running",
-        "parameters": {
-          "machineSpeed": 700,
-          "maxLoad": 45,
-          "maxInput": 50, 
-          "faultRate": 0.04,
-          "goodOut": 35
-        }
-      },
-      {
-        "id": 6,
-        "name": "retort",
-        "type": "servicing",
-        "status": "starved",
-        "parameters": {
-          "machineSpeed": 450,
-          "maxLoad": 20,
-          "maxInput": 25, 
-          "faultRate": 0.05,
-          "goodOut": 10
-        }
-      },
-      {
-        "id": 7,
-        "name": "casePack",
-        "type": "packing",
-        "status": "faulted",
-        "parameters": {
-          "machineSpeed": 0,
-          "maxLoad": 0,
-          "maxInput": 0, 
-          "faultRate": 0.08,
-          "goodOut": 0
-        }
-      }
-    ],
-    "faultTypes": [
-        "forcedShutdown",
-        "faultyEquipment",
-        "starvedInput",
-        "lineHalted"
     ]
   }
 }
