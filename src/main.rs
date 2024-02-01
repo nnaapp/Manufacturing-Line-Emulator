@@ -488,10 +488,13 @@ let file_path = "factory.json";
         prevTime = iterTime;
     }
     let mut file = File::create("log.txt")?;
-    file.write(b"i am stuck\n")?;
-    file.write(b"Machine Output: placeholder\n")?;
-    file.write(b"State Changes: placeholder\n")?;
-    file.write(b"Product Loss: placeholder\n")?;
-    file.write(b"Testing output\n")?;
+    for i in 0..3 {
+
+        writeln!(&file, "Machine ID: {}", data.factory.Machines[i].id)?;
+        writeln!(&file, "Machine Output: {}", data.factory.Machines[i].throughput)?;
+        writeln!(&file, "State Changes: {}", data.factory.Machines[i].state)?;
+        writeln!(&file, "")?;
+
+    }
     Ok(())
 }
