@@ -122,6 +122,13 @@ impl Machine
             return;
         }
 
+        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+        let mut invBackups = Vec::<usize>::new();
+        for i in 0..self.inputID.len()
+        {
+            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+        }
+
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
         let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
         if inBehavior(self, machines)
@@ -135,6 +142,12 @@ impl Machine
             }
             else
             {
+                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+                for i in 0..self.inputID.len()
+                {
+                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                }
+
                 // enough input, but can't output
                 self.state = OPCState::BLOCKED;
                 self.stateChangeCount += 1;
@@ -175,6 +188,13 @@ impl Machine
             return;
         }
 
+        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+        let mut invBackups = Vec::<usize>::new();
+        for i in 0..self.inputID.len()
+        {
+            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+        }
+
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
         let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
         if inBehavior(self, machines)
@@ -190,6 +210,12 @@ impl Machine
             }
             else
             {
+                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+                for i in 0..self.inputID.len()
+                {
+                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                }
+
                 //still blocked stay that way
                 println!("ID {}: Blocked.", self.id);
             }
@@ -210,6 +236,13 @@ impl Machine
             return;
         }
 
+        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+        let mut invBackups = Vec::<usize>::new();
+        for i in 0..self.inputID.len()
+        {
+            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+        }
+
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
         let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
         if inBehavior(self, machines)
@@ -225,6 +258,12 @@ impl Machine
             }
             else
             {
+                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
+                for i in 0..self.inputID.len()
+                {
+                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                }
+                
                 //If output blocked change to blocked state
                 println!("ID {}: Output is Blocked, changing state.", self.id);
                 self.state = OPCState::BLOCKED;
