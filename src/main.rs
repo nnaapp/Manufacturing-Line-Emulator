@@ -39,7 +39,7 @@ struct Machine
     throughput: usize, // How much gets produced
     state: OPCState,
     inputLanes: usize, // Number of input lanes
-    inputID: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
+    inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
     inBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
     outputLanes: usize,
     outBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>,
@@ -67,7 +67,7 @@ impl Machine
             throughput,
             state,
             inputLanes,
-            inputID: inIDs,
+            inputIDs: inIDs,
             inBehavior: None,
             outputLanes,
             outBehavior: None,
@@ -82,7 +82,7 @@ impl Machine
 
     fn connect(&mut self, machineID: usize, laneID: usize)
     {
-        self.inputID.push(MachineLaneID { machineID, laneID });
+        self.inputIDs.push(MachineLaneID { machineID, laneID });
     }
 
     fn set_behavior(&mut self, inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool, outBehvaior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool)
@@ -124,9 +124,9 @@ impl Machine
 
         // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
         let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputID.len()
+        for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -143,9 +143,9 @@ impl Machine
             else
             {
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputID.len()
+                for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
                 }
 
                 // enough input, but can't output
@@ -190,9 +190,9 @@ impl Machine
 
         // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
         let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputID.len()
+        for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -211,9 +211,9 @@ impl Machine
             else
             {
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputID.len()
+                for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
                 }
 
                 //still blocked stay that way
@@ -238,9 +238,9 @@ impl Machine
 
         // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
         let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputID.len()
+        for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -259,9 +259,9 @@ impl Machine
             else
             {
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputID.len()
+                for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputID[i].machineID).unwrap().inventory[self.inputID[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
                 }
                 
                 //If output blocked change to blocked state
@@ -292,7 +292,7 @@ impl Machine
         let mut needed = 0; // Track how much excess is needed from lanes that have extra
         for i in 0..self.inputLanes
         {
-            let currentID = self.inputID[i];
+            let currentID = self.inputIDs[i];
             if machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID] < inPerLane[i]
             {
                 let floating = inPerLane[i] - machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID];
@@ -304,7 +304,7 @@ impl Machine
         // Try to draw the needed amount from lanes that have an amount of excess available
         for i in 0..self.inputLanes
         {
-            let currentID = self.inputID[i];
+            let currentID = self.inputIDs[i];
             let mut available = machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID] - inPerLane[i]; 
             if needed != 0 && available > 0
             {
@@ -319,7 +319,7 @@ impl Machine
         {
             for i in 0..self.inputLanes
             {
-                let currentID = self.inputID[i];
+                let currentID = self.inputIDs[i];
                 // println!("{} {}", machines.get_mut(&currentID.machineID).unwrap().inventory[currentID.laneID], inPerLane[i]);
                 machines.get_mut(&currentID.machineID).expect("Machine HashMap error").inventory[currentID.laneID] -= inPerLane[i];
             }
@@ -410,8 +410,7 @@ struct JSONMachine {
     cost: usize,
     throughput: usize,
     state: String,
-    inputLanes: usize,
-    inputID: Vec<MachineLaneID>,
+    inputIDs: Vec<MachineLaneID>,
     inBehavior: String,
     outputLanes: usize,
     outBehavior: String,
@@ -476,12 +475,11 @@ fn main() -> std::io::Result<()>
             machine.cost,
             machine.throughput,
             state,
-            machine.inputLanes,
+            machine.inputIDs.len(),
             machine.outputLanes,
             machine.capacity
         );
-
-        newMachine.inputID = machine.inputID;
+        newMachine.inputIDs = machine.inputIDs;
 
         let mut inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_pull;
         let mut outBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_push;
@@ -510,7 +508,7 @@ fn main() -> std::io::Result<()>
         // println!("Throughput: {}", data.factory.Machines[i].throughput);
         // println!("State: {}", data.factory.Machines[i].state);
         // println!("Input Lanes: {}", data.factory.Machines[i].inputLanes);
-        // println!("Input ID: {:?}, {:?}", data.factory.Machines[i].inputID[0].machineID, data.factory.Machines[i].inputID[0].laneID);
+        // println!("Input ID: {:?}, {:?}", data.factory.Machines[i].inputIDs[0].machineID, data.factory.Machines[i].inputIDs[0].laneID);
         // println!("Input Behavior: {}", data.factory.Machines[i].inBehavior);
         // println!("Output Lanes: {}", data.factory.Machines[i].outputLanes);
         // println!("Output Behavior: {}", data.factory.Machines[i].outBehavior);

@@ -11,8 +11,7 @@
         "cost": 1,
         "throughput": 1,
         "state": "PRODUCING",
-        "inputLanes": 1, 
-        "inputID": [
+        "inputIDs": [
           {
             "machineID": 0,
             "laneID": 0
@@ -31,35 +30,37 @@
           "cost": 2,
           "throughput": 2,
           "state": "PRODUCING",
-          "inputLanes": 1, 
-          "inputID": [
+          "inputIDs": [
             {
               "machineID": 0 ,
               "laneID": 0
             }
           ], 
           "inBehavior": "DEFAULT", 
-          "outputLanes": 1,
+          "outputLanes": 2,
           "outBehavior": "DEFAULT",
-          "capacity": 2
+          "capacity": 6
         },
         {
           "id": 2,
-          "tickSpeed": 500,
+          "tickSpeed": 2000,
           "failChance": 0.0,
-          "cost": 1,
+          "cost": 4,
           "throughput": 1,
           "state": "PRODUCING",
-          "inputLanes": 1, 
-          "inputID": [
+          "inputIDs": [
             {
-              "machineID": 1 ,
+              "machineID": 1,
               "laneID": 0
+            },
+            {
+              "machineID": 1,
+              "laneID": 1
             }
           ], 
           "inBehavior": "DEFAULT", 
           "outputLanes": 1,
-          "outBehavior": "DEFAULT",
+          "outBehavior": "CONSUMER",
           "capacity": 8
         }
     ]
