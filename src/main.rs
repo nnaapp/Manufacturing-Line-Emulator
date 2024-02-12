@@ -6,11 +6,11 @@ extern crate rand;
 use rand::Rng;
 extern crate serde_json;
 extern crate serde;
-use serde_json::{Result, Value};
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::{Write, Read};
+
 
 #[derive(Clone, PartialEq, Eq)]
 enum OPCState
@@ -32,8 +32,8 @@ struct MachineLaneID
 struct Machine
 {
     id: usize,
-    deltaTime: u128, // deltaTime is in milliseconds
-    tickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
+    processClock: u128, // deltaTime is in milliseconds
+    processTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     failChance: f32,
     cost: usize, // Cost to produce
     throughput: usize, // How much gets produced
@@ -43,8 +43,8 @@ struct Machine
     inBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
     outputLanes: usize,
     outBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>,
-    capacity: usize, // Capacity of EACH inventory
-    inventory: Vec<usize>, // Vector of inventories, one per output lane
+    capacity: usize, // Capacity of EACH beltInventories
+    beltInventories: Vec<usize>, // Vector of inventories, one per output lane
 
     producedCount: usize,
     consumedCount: usize,
@@ -52,7 +52,7 @@ struct Machine
 }
 impl Machine
 {
-    fn new(id: usize, tickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
+    fn new(id: usize, processTickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
         inIDs.reserve(inputLanes);
@@ -60,8 +60,8 @@ impl Machine
 
         let newMachine = Machine {
             id,
-            deltaTime: 0,
-            tickSpeed,
+            processClock: 0,
+            processTickSpeed,
             failChance,
             cost,
             throughput,
@@ -72,17 +72,12 @@ impl Machine
             outputLanes,
             outBehavior: None,
             capacity,
-            inventory: inventories,
+            beltInventories: inventories,
             consumedCount: 0,
             producedCount: 0,
             stateChangeCount: 0,
         };
         return newMachine;
-    }
-
-    fn connect(&mut self, machineID: usize, laneID: usize)
-    {
-        self.inputIDs.push(MachineLaneID { machineID, laneID });
     }
 
     fn set_behavior(&mut self, inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool, outBehvaior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool)
@@ -93,16 +88,16 @@ impl Machine
 
     fn update(&mut self, deltaTime: u128, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
-        self.deltaTime += deltaTime;
+        self.processClock += deltaTime;
         
         // If it is not time to execute a tick, return
-        if self.deltaTime < self.tickSpeed
+        if self.processClock < self.processTickSpeed
         {
             return;
         }
 
         // Execute a tick
-        self.deltaTime -= self.tickSpeed;
+        self.processClock -= self.processTickSpeed;
         match self.state
         {
             OPCState::PRODUCING=>self.producing(seed, machines),
@@ -126,7 +121,7 @@ impl Machine
         let mut invBackups = Vec::<usize>::new();
         for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -145,7 +140,7 @@ impl Machine
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
                 for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
                 }
 
                 // enough input, but can't output
@@ -192,7 +187,7 @@ impl Machine
         let mut invBackups = Vec::<usize>::new();
         for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -213,7 +208,7 @@ impl Machine
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
                 for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
                 }
 
                 //still blocked stay that way
@@ -240,7 +235,7 @@ impl Machine
         let mut invBackups = Vec::<usize>::new();
         for i in 0..self.inputIDs.len()
         {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID]);
+            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
         }
 
         // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
@@ -261,7 +256,7 @@ impl Machine
                 // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
                 for i in 0..self.inputIDs.len()
                 {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().inventory[self.inputIDs[i].laneID] = invBackups[i];
+                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
                 }
                 
                 //If output blocked change to blocked state
@@ -293,9 +288,9 @@ impl Machine
         for i in 0..self.inputLanes
         {
             let currentID = self.inputIDs[i];
-            if machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID] < inPerLane[i]
+            if machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID] < inPerLane[i]
             {
-                let floating = inPerLane[i] - machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID];
+                let floating = inPerLane[i] - machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID];
                 inPerLane[i] -= floating;
                 needed += floating;
             }
@@ -305,7 +300,7 @@ impl Machine
         for i in 0..self.inputLanes
         {
             let currentID = self.inputIDs[i];
-            let mut available = machines.get(&currentID.machineID).unwrap().inventory[currentID.laneID] - inPerLane[i]; 
+            let mut available = machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID] - inPerLane[i]; 
             if needed != 0 && available > 0
             {
                 if available > needed { available = needed; }
@@ -320,8 +315,8 @@ impl Machine
             for i in 0..self.inputLanes
             {
                 let currentID = self.inputIDs[i];
-                // println!("{} {}", machines.get_mut(&currentID.machineID).unwrap().inventory[currentID.laneID], inPerLane[i]);
-                machines.get_mut(&currentID.machineID).expect("Machine HashMap error").inventory[currentID.laneID] -= inPerLane[i];
+                // println!("{} {}", machines.get_mut(&currentID.machineID).unwrap().beltInventories[currentID.laneID], inPerLane[i]);
+                machines.get_mut(&currentID.machineID).expect("Machine HashMap error").beltInventories[currentID.laneID] -= inPerLane[i];
             }
             return true;
         }
@@ -330,12 +325,14 @@ impl Machine
         return false;
     }
 
+    #[allow(unused_variables)]
     // Always returns true, to simulate having infinite supply
     fn spawner_input(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
         return true;
     }
 
+    #[allow(unused_variables)]
     // Algorithm for evenly pushing output onto multiple lanes, favoring lower IDs/indices for imbalances
     fn multilane_push(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
@@ -351,7 +348,7 @@ impl Machine
         let mut remaining = 0; // Remaining product that is not yet on a lane
         for i in 0..self.outputLanes
         {
-            let sum = self.inventory[i] + outPerLane[i];
+            let sum = self.beltInventories[i] + outPerLane[i];
             if sum > self.capacity
             {
                 // Put the overflow in the remaining variable, keep the amount that will fit
@@ -364,7 +361,7 @@ impl Machine
         // Put the remaining products in the nearest available space, on the next ID/index up
         for i in 0..self.outputLanes
         {
-            let sum = self.inventory[i] + outPerLane[i];
+            let sum = self.beltInventories[i] + outPerLane[i];
             if remaining != 0 && sum < self.capacity
             {
                 let mut available = self.capacity - sum;
@@ -379,7 +376,7 @@ impl Machine
         {
             for i in 0..self.outputLanes
             {
-                self.inventory[i] += outPerLane[i];
+                self.beltInventories[i] += outPerLane[i];
             }
             return true;
         }
@@ -388,14 +385,14 @@ impl Machine
         return false;
     }
 
-    // Uses multilane_push, but just zeroes out every inventory afterwards, for infinite space 
+    // Uses multilane_push, but just zeroes out every beltInventories afterwards, for infinite space 
     fn consumer_output(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
         if !self.multilane_push(machines) { return false; }
 
-        for i in 0..self.inventory.len()
+        for i in 0..self.beltInventories.len()
         {
-            self.inventory[i] = 0;
+            self.beltInventories[i] = 0;
         }
         
         return true;
@@ -547,7 +544,7 @@ fn main() -> std::io::Result<()>
     let mut timePassed: u128 = 0; // milliseconds passed 
     
     //Simulation speed
-    let simSpeed: f64 = 2.0;
+    let simSpeed: f64 = 1.0;
     
     // Master random number generator, which is passed to machines to use for faults
     let mut rng = rand::thread_rng();

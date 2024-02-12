@@ -6,7 +6,7 @@
     "Machines": [
       {
         "id": 0,
-        "tickSpeed": 500,
+        "tickSpeed": 250,
         "failChance": 0.0,
         "cost": 1,
         "throughput": 1,
