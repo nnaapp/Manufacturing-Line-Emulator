@@ -11,6 +11,7 @@
         "cost": 1,
         "throughput": 1,
         "state": "PRODUCING",
+        "faultMessage": "Default Fault Code.",
         "inputIDs": [
           {
             "machineID": 0,
@@ -30,6 +31,7 @@
           "cost": 2,
           "throughput": 2,
           "state": "PRODUCING",
+          "faultMessage": "Default Fault Code.",
           "inputIDs": [
             {
               "machineID": 0 ,
@@ -48,6 +50,7 @@
           "cost": 4,
           "throughput": 1,
           "state": "PRODUCING",
+          "faultMessage": "Default Fault Code.",
           "inputIDs": [
             {
               "machineID": 1,

@@ -40,6 +40,7 @@ struct Machine
     cost: usize, // Cost to produce
     throughput: usize, // How much gets produced
     state: OPCState,
+    faultMessage: String, //string for fault messages 
     inputLanes: usize, // Number of input lanes
     inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
     inBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
@@ -54,7 +55,7 @@ struct Machine
 }
 impl Machine
 {
-    fn new(id: usize, processTickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
+    fn new(id: usize, processTickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, faultMessage: String, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
         inIDs.reserve(inputLanes);
@@ -68,6 +69,7 @@ impl Machine
             cost,
             throughput,
             state,
+            faultMessage,
             inputLanes,
             inputIDs: inIDs,
             inBehavior: None,
@@ -172,7 +174,7 @@ impl Machine
     // Function for faulted state
     fn faulted(&mut self)
     {
-        println!("ID {}: Faulted.", self.id);
+        println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
     }
 
 
@@ -219,7 +221,7 @@ impl Machine
         }
         else
         {
-            //could go starved but already blocked, which should be priority?
+            //needs dual states implimented for when both blocked and starved
             // track state change too
         }
     }
@@ -409,6 +411,7 @@ struct JSONMachine {
     cost: usize,
     throughput: usize,
     state: String,
+    faultMessage: String,
     inputIDs: Vec<MachineLaneID>,
     inBehavior: String,
     outputLanes: usize,
@@ -474,6 +477,7 @@ fn main() -> std::io::Result<()>
             machine.cost,
             machine.throughput,
             state,
+            machine.faultMessage,
             machine.inputIDs.len(),
             machine.outputLanes,
             machine.capacity
