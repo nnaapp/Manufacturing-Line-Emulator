@@ -10,6 +10,8 @@ use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::{Write, Read};
+extern crate opcua;
+use opcua::server::prelude::*;
 
 
 #[derive(Clone, PartialEq, Eq)]
@@ -595,4 +597,9 @@ fn main() -> std::io::Result<()>
 
     }
     Ok(())
+}
+
+fn serverSetup()
+{
+    // setup here
 }
