@@ -526,7 +526,9 @@ fn main() -> std::io::Result<()>
     let file = File::create("log.txt")?;
     for id in ids.iter()
     {
-        let efficiencyCount = machines.get(id).expect("idk").producedCount / machines.get(id).expect("idk").capacity * runtime as usize;
+        let machine = machines.get(id).unwrap();
+        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processTickSpeed as f64));
+
         writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
         writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
         writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").producedCount)?;
