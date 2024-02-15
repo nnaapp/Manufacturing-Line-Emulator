@@ -63,7 +63,7 @@
           ], 
           "inBehavior": "DEFAULT", 
           "outputLanes": 1,
-          "outBehavior": "CONSUMER",
+          "outBehavior": "DEFAULT",
           "capacity": 8
         }
     ]

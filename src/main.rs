@@ -1,26 +1,44 @@
 #![allow(non_snake_case)]
 
+use std::fmt;
+use std::thread;
 use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
+
 extern crate rand;
 use rand::Rng;
+
 extern crate serde_json;
 extern crate serde;
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::{Write, Read};
+
 extern crate opcua;
+use std::path::PathBuf;
 use opcua::server::prelude::*;
 
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OPCState
 {
     PRODUCING,
     FAULTED,
     BLOCKED,
     STARVED,
+}
+impl fmt::Display for OPCState
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self
+        {
+            OPCState::PRODUCING => write!(f, "producing"),
+            OPCState::FAULTED => write!(f, "faulted"),
+            OPCState::BLOCKED => write!(f, "blocked"),
+            OPCState::STARVED => write!(f, "starved"),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -432,6 +450,93 @@ struct JSONData {
     factory: JSONFactory,
 }
 
+fn main() -> std::io::Result<()>
+{
+    // Debug backtrace info
+    env::set_var("RUST_BACKTRACE", "1");
+
+    // Tuple of HashMap<usize, Machine> and Vec<usize>
+    let factoryData = factorySetup();
+    // HashMap<usize, Machine>, associated machine ID with the relevant machine data
+    let mut machines = factoryData.0;
+    // Vec<usize>, tracks every valid ID, allows us to always get a valid hashmap entry
+    let ids = factoryData.1;
+
+    // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
+    let serverData = serverSetup(machines.values().cloned().collect(), "MyLine");
+    let server = serverData.0;
+    let addressSpace = server.address_space();
+    let nodeIDs = serverData.1;
+    // Spawn a thread for the server to run on independently
+    thread::spawn(|| {
+        server.run();
+    });
+    
+    let runtime = 100000 * 1000;  // milliseconds needed to pass to stop
+    let mut timePassed: u128 = 0; // milliseconds passed 
+    
+    //Simulation speed
+    let simSpeed: f64 = 1.0;
+
+    // Server poll rate in milliseconds
+    let pollRate = 100;
+    let mut pollDeltaTime = 0; // time passed since last poll 
+    
+    // Master random number generator, which is passed to machines to use for faults
+    let mut rng = rand::thread_rng();
+
+    // Start represents current SystemTime, 
+    // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
+    // deltaTime represents milliseconds time between previous and current iteration of loop.
+    let mut start = SystemTime::now();
+    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");
+    let mut prevTime:Duration = iterTime;
+    let mut deltaTime:u128;
+
+    while timePassed < runtime
+    {   
+        // Find deltatime between loop iterations
+        start = SystemTime::now();
+        iterTime = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");     
+        deltaTime = iterTime.as_millis() - prevTime.as_millis();
+        timePassed += deltaTime;
+        deltaTime = ((iterTime.as_millis() as f64 * simSpeed) as u128) - (((prevTime.as_millis() as f64) * simSpeed) as u128);
+
+        // rng is used to seed the update with any random integer, which is used for any rng dependent operationsu
+        for id in ids.iter()
+        {
+            // TODO: Consider multiple passes over machines with some logic, in the case of extremely fast machines or extremely high sim speed
+            let mut machineCopy = machines.get(&id).unwrap().clone();
+            machineCopy.update(deltaTime, rng.gen_range(0..=std::i32::MAX), &mut machines);
+            machines.insert(*id, machineCopy);
+        }
+
+        // Check if the server should poll for updates
+        pollDeltaTime += deltaTime;
+        if pollDeltaTime >= pollRate
+        {
+            pollDeltaTime -= pollRate;
+            let mut addressSpace = addressSpace.write();
+            serverPoll(&mut addressSpace, &machines, &nodeIDs, &ids);
+        }
+
+        // Log system time at the start of this iteration, for use in next iteration
+        prevTime = iterTime;
+    }
+    let file = File::create("log.txt")?;
+    for id in ids.iter()
+    {
+
+        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
+        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
+        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").producedCount)?;
+        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").stateChangeCount)?;
+        writeln!(&file, "")?;
+
+    }
+    Ok(())
+}
+
 fn read_json_file(file_path: &str) -> String {
     let mut file_content = String::new();
     let mut file = File::open(file_path).expect("Failed to open file");
@@ -439,12 +544,8 @@ fn read_json_file(file_path: &str) -> String {
     file_content
 }
 
-
-fn main() -> std::io::Result<()>
+fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>)
 {
-    // Debug backtrace info
-    env::set_var("RUST_BACKTRACE", "1");
-
     let file_path = "factory.json";
     let json_data = read_json_file(file_path);
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
@@ -503,102 +604,64 @@ fn main() -> std::io::Result<()>
 
         ids.push(machine.id);
         machines.insert(machine.id, newMachine);
-
-        // println!("Machine ID: {}", data.factory.Machines[i].id);
-        // println!("Tick-Speed: {}", data.factory.Machines[i].tickSpeed);
-        // println!("failChance: {}", data.factory.Machines[i].failChance);
-        // println!("Cost: {}", data.factory.Machines[i].cost);
-        // println!("Throughput: {}", data.factory.Machines[i].throughput);
-        // println!("State: {}", data.factory.Machines[i].state);
-        // println!("Input Lanes: {}", data.factory.Machines[i].inputLanes);
-        // println!("Input ID: {:?}, {:?}", data.factory.Machines[i].inputIDs[0].machineID, data.factory.Machines[i].inputIDs[0].laneID);
-        // println!("Input Behavior: {}", data.factory.Machines[i].inBehavior);
-        // println!("Output Lanes: {}", data.factory.Machines[i].outputLanes);
-        // println!("Output Behavior: {}", data.factory.Machines[i].outBehavior);
-        // println!("Capacity: {}", data.factory.Machines[i].capacity);
-        // println!("");
-
     }
-    
-    // This is VERY work in progress, this is just a test case
-    // machines.insert(0, Machine::new(0, 500, 0.0, 1, 3, OPCState::PRODUCING, 1, 3, 6));
-    // ids.push(0);
-    // let mut curMachine: &mut Machine = machines.get_mut(&0).unwrap();
-    // curMachine.set_behavior(Machine::spawner_input, Machine::multilane_push);
 
-    // machines.insert(14, Machine::new(14, 1000, 0.0, 6, 2, OPCState::PRODUCING, 3, 2, 4));
-    // ids.push(14);
-    // curMachine = machines.get_mut(&14).unwrap();
-    // curMachine.connect(0, 0);
-    // curMachine.connect(0, 1);
-    // curMachine.connect(0, 2);
-    // curMachine.set_behavior(Machine::multilane_pull, Machine::multilane_push);
-
-    // machines.insert(2, Machine::new(2, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
-    // ids.push(2);
-    // curMachine = machines.get_mut(&2).unwrap();
-    // curMachine.connect(14, 0);
-    // curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
-
-    // machines.insert(3, Machine::new(3, 1000, 0.0, 1, 1, OPCState::PRODUCING, 1, 1, 2));
-    // ids.push(3);
-    // curMachine = machines.get_mut(&3).unwrap();
-    // curMachine.connect(14, 1);
-    // curMachine.set_behavior(Machine::multilane_pull, Machine::consumer_output);
-
-    let runtime = 10 * 1000;  // milliseconds needed to pass to stop
-    let mut timePassed: u128 = 0; // milliseconds passed 
-    
-    //Simulation speed
-    let simSpeed: f64 = 1.0;
-    
-    // Master random number generator, which is passed to machines to use for faults
-    let mut rng = rand::thread_rng();
-
-    // Start represents current SystemTime, 
-    // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
-    // deltaTime represents milliseconds time between previous and current iteration of loop.
-    let mut start = SystemTime::now();
-    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");
-    let mut prevTime:Duration = iterTime;
-    let mut deltaTime:u128;
-
-    while timePassed < runtime
-    {   
-        // Find deltatime between loop iterations
-        start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");     
-        deltaTime = iterTime.as_millis() - prevTime.as_millis();
-        timePassed += deltaTime;
-        deltaTime = ((iterTime.as_millis() as f64 * simSpeed) as u128) - (((prevTime.as_millis() as f64) * simSpeed) as u128);
-
-        // rng is used to seed the update with any random integer, which is used for any rng dependent operationsu
-        for id in ids.iter()
-        {
-            // TODO: Consider multiple passes over machines with some logic, in the case of extremely fast machines or extremely high sim speed
-            let mut machineCopy = machines.get(&id).unwrap().clone();
-            machineCopy.update(deltaTime, rng.gen_range(0..=std::i32::MAX), &mut machines);
-            machines.insert(*id, machineCopy);
-        }
-
-        // Log system time at the start of this iteration, for use in next iteration
-        prevTime = iterTime;
-    }
-    let file = File::create("log.txt")?;
-    for id in ids.iter()
-    {
-
-        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
-        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
-        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").producedCount)?;
-        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").stateChangeCount)?;
-        writeln!(&file, "")?;
-
-    }
-    Ok(())
+    return (machines, ids);
 }
 
-fn serverSetup()
+// Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
+fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<usize, NodeId>)
 {
-    // setup here
+    let server = Server::new(ServerConfig::load(&PathBuf::from("./server.conf")).unwrap());
+
+    let ns = {
+        let address_space = server.address_space();
+        let mut address_space = address_space.write();
+        address_space.register_namespace("urn:line-server").unwrap()
+    };
+
+    let mut nodeIDs = HashMap::<usize, NodeId>::new();
+    for i in 0 as usize..machines.len()
+    {
+        let newNode = NodeId::new(ns, machines[i].id.to_string());
+        nodeIDs.insert(machines[i].id, newNode);
+    }
+
+    let addressSpace = server.address_space();
+
+    {
+        let mut addressSpace = addressSpace.write();
+
+        let folderId = addressSpace.add_folder(lineName, lineName, &NodeId::objects_folder_id()).unwrap();
+
+        let nodeIDs = nodeIDs.clone();
+        let mut variables = Vec::<Variable>::new();
+        
+        for i in 0 as usize..machines.len()
+        {
+            let machineName = machines[i].id.to_string();
+            let stateVarName = format!("ID-{machineName}-State");
+            variables.push(
+                Variable::new(&nodeIDs.get(&machines[i].id).expect("NodeID somehow ceased to exist."),
+                stateVarName.clone(), 
+                stateVarName.clone(), 
+                machines[i].state.to_string()));
+        }
+
+        let _ = addressSpace.add_variables(variables, &folderId);
+    }
+
+    return (server, nodeIDs);
+}
+
+// Handles updating the values of each machine on the OPC server
+fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine>, nodeIDs: &HashMap<usize, NodeId>, ids: &Vec<usize>)
+{
+    let now = DateTime::now();
+    for id in ids.iter()
+    {
+        let machine = machines.get(&id).expect("Machine ceased to exist.");
+        let nodeID = nodeIDs.get(&id).expect("NodeID ceased to exist.");
+        addressSpace.set_variable_value(nodeID, machine.state.to_string(), &now, &now);
+    }
 }
