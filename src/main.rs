@@ -6,6 +6,7 @@ use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
 
 extern crate rand;
+use opcua::core::runtime::Runtime;
 use rand::Rng;
 
 extern crate serde_json;
@@ -441,7 +442,9 @@ struct JSONMachine {
 struct JSONFactory {
     name: String,
     description: String,
-    Runtime: u32,
+    simSpeed: f64,
+    pollRate: u128,
+    Runtime: u128,
     Machines: Vec<JSONMachine>,
 }
 
@@ -461,6 +464,14 @@ fn main() -> std::io::Result<()>
     let mut machines = factoryData.0;
     // Vec<usize>, tracks every valid ID, allows us to always get a valid hashmap entry
     let ids = factoryData.1;
+    //Simulation speed
+    let simSpeed: f64 = factoryData.2;
+    // Server poll rate in milliseconds
+    let pollRate = factoryData.3;
+    let mut pollDeltaTime = 0; // time passed since last poll 
+
+    let runtime = factoryData.4 * 1000;  // milliseconds needed to pass to stop
+    let mut timePassed: u128 = 0; // milliseconds passed 
 
     // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
     let serverData = serverSetup(machines.values().cloned().collect(), "MyLine");
@@ -471,16 +482,6 @@ fn main() -> std::io::Result<()>
     thread::spawn(|| {
         server.run();
     });
-    
-    let runtime = 200 * 1000;  // milliseconds needed to pass to stop
-    let mut timePassed: u128 = 0; // milliseconds passed 
-    
-    //Simulation speed
-    let simSpeed: f64 = 1.0;
-
-    // Server poll rate in milliseconds
-    let pollRate = 100;
-    let mut pollDeltaTime = 0; // time passed since last poll 
     
     // Master random number generator, which is passed to machines to use for faults
     let mut rng = rand::thread_rng();
@@ -547,7 +548,7 @@ fn read_json_file(file_path: &str) -> String {
     file_content
 }
 
-fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>)
+fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
 {
     let file_path = "factory.json";
     let json_data = read_json_file(file_path);
@@ -555,8 +556,15 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>)
 
     println!("Factory Name: {}", data.factory.name);
     println!("Description: {}", data.factory.description);
+    println!("simSpeed: {} ", data.factory.simSpeed);
+    println!("pollRate: {} milliseconds", data.factory.pollRate);
     println!("Runtime: {} seconds", data.factory.Runtime);
     println!("");
+
+    //Setting data to variables to be passed into the return
+    let factorySpeed = data.factory.simSpeed; 
+    let factoryPollRate = data.factory.pollRate;
+    let factoryRuntime = data.factory.Runtime;
 
     let mut machines = HashMap::<usize, Machine>::new();
     let mut ids = Vec::<usize>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
@@ -609,7 +617,7 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>)
         machines.insert(machine.id, newMachine);
     }
 
-    return (machines, ids);
+    return (machines, ids, factorySpeed, factoryPollRate, factoryRuntime);
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs

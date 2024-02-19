@@ -2,6 +2,8 @@
   "factory": {
     "name": "N/A",
     "description": "A simple manufacturing line for product assembly",
+    "simSpeed": 1.0,
+    "pollRate": 100,
     "Runtime": 10,
     "Machines": [
       {
@@ -63,7 +65,7 @@
           ], 
           "inBehavior": "DEFAULT", 
           "outputLanes": 1,
-          "outBehavior": "DEFAULT",
+          "outBehavior": "CONSUMER",
           "capacity": 8
         }
     ]
