@@ -472,7 +472,7 @@ fn main() -> std::io::Result<()>
         server.run();
     });
     
-    let runtime = 20 * 1000;  // milliseconds needed to pass to stop
+    let runtime = 200 * 1000;  // milliseconds needed to pass to stop
     let mut timePassed: u128 = 0; // milliseconds passed 
     
     //Simulation speed
@@ -613,7 +613,7 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>)
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
-fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<usize, NodeId>)
+fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<String, NodeId>)
 {
     let server = Server::new(ServerConfig::load(&PathBuf::from("./server.conf")).unwrap());
 
@@ -623,48 +623,76 @@ fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<usize
         address_space.register_namespace("urn:line-server").unwrap()
     };
 
-    let mut nodeIDs = HashMap::<usize, NodeId>::new();
-    for i in 0 as usize..machines.len()
-    {
-        let newNode = NodeId::new(ns, machines[i].id.to_string());
-        nodeIDs.insert(machines[i].id, newNode);
-    }
+    let mut nodeIDs = HashMap::<String, NodeId>::new();
 
     let addressSpace = server.address_space();
 
     {
         let mut addressSpace = addressSpace.write();
 
-        let folderId = addressSpace.add_folder(lineName, lineName, &NodeId::objects_folder_id()).unwrap();
+        let folderID = addressSpace.add_folder(lineName, lineName, &NodeId::objects_folder_id()).unwrap();
 
-        let nodeIDs = nodeIDs.clone();
-        let mut variables = Vec::<Variable>::new();
-        
         for i in 0 as usize..machines.len()
         {
-            let machineName = machines[i].id.to_string();
-            let stateVarName = format!("ID-{machineName}-State");
+            let machineID = machines[i].id.to_string();
+            // Making folder for machine and its tags, child of line folder
+            let machineName = format!("Machine-ID-{machineID}");
+            let machineFolderID = addressSpace.add_folder(machineName.clone(), machineName.clone(), &folderID).unwrap();
+            
+            // Vector of this machine's variable nodes
+            let mut variables = Vec::<Variable>::new();
+            
+            // State node initialization
+            let stateVarName = "state";
+            let stateNodeID = NodeId::new(ns, format!("{machineID}-state"));
             variables.push(
-                Variable::new(&nodeIDs.get(&machines[i].id).expect("NodeID somehow ceased to exist."),
-                stateVarName.clone(), 
-                stateVarName.clone(), 
+                Variable::new(&stateNodeID,
+                stateVarName, 
+                stateVarName, 
                 machines[i].state.to_string()));
-        }
+            nodeIDs.insert(format!("{machineID}-state"), stateNodeID);
 
-        let _ = addressSpace.add_variables(variables, &folderId);
+            let faultMsgVarName = "fault-message";
+            let faultMsgNodeID = NodeId::new(ns, format!("{machineID}-fault-msg"));
+            variables.push(
+                Variable::new(&faultMsgNodeID,
+                faultMsgVarName,
+                faultMsgVarName,
+                machines[i].faultMessage.clone()));
+            nodeIDs.insert(format!("{machineID}-fault-msg"), faultMsgNodeID);
+
+            let producedCountVarName = "produced-count";
+            let producedCountNodeID = NodeId::new(ns, format!("{machineID}-produced-count"));
+            variables.push(
+                Variable::new(&producedCountNodeID, 
+                producedCountVarName,
+                producedCountVarName,
+                machines[i].producedCount as u64));
+            nodeIDs.insert(format!("{machineID}-produced-count"), producedCountNodeID);
+            
+            let _ = addressSpace.add_variables(variables, &machineFolderID);
+        }
     }
 
     return (server, nodeIDs);
 }
 
 // Handles updating the values of each machine on the OPC server
-fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine>, nodeIDs: &HashMap<usize, NodeId>, ids: &Vec<usize>)
+fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
 {
     let now = DateTime::now();
     for id in ids.iter()
     {
         let machine = machines.get(&id).expect("Machine ceased to exist.");
-        let nodeID = nodeIDs.get(&id).expect("NodeID ceased to exist.");
-        addressSpace.set_variable_value(nodeID, machine.state.to_string(), &now, &now);
+        let machineID = machine.id.to_string();
+
+        let stateNodeID = nodeIDs.get(&format!("{machineID}-state")).expect("NodeId ceased to exist.");
+        addressSpace.set_variable_value(stateNodeID, machine.state.to_string(), &now, &now);
+
+        let faultMsgNodeID = nodeIDs.get(&format!("{machineID}-fault-msg")).expect("NodeId ceased to exist.");
+        addressSpace.set_variable_value(faultMsgNodeID, machine.faultMessage.clone(), &now, &now);
+
+        let producedCountNodeID = nodeIDs.get(&format!("{machineID}-produced-count")).expect("NodeId ceased to exist.");
+        addressSpace.set_variable_value(producedCountNodeID, machine.producedCount as u64, &now, &now);
     }
 }
