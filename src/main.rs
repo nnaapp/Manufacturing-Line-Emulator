@@ -6,7 +6,6 @@ use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
 
 extern crate rand;
-use opcua::core::runtime::Runtime;
 use rand::Rng;
 
 extern crate serde_json;
@@ -68,7 +67,6 @@ struct Machine
     inputClock: u128,
     inputTickSpeed: u128, // tick for pulling input into inputInventory
     inputTickHeld: bool,
-    inputLanes: usize, // Number of input lanes
     inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
     inputInventory: usize, // storage place in machine before process 
     inputInvCapacity: usize, 
@@ -117,7 +115,6 @@ impl Machine
             inputClock: 0,
             inputTickSpeed,
             inputTickHeld: false,
-            inputLanes,
             inputIDs: inIDs,
             inputInventory: 0,
             inputInvCapacity,
@@ -145,6 +142,12 @@ impl Machine
 
     fn update(&mut self, deltaTime: u128, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
+        if self.state == OPCState::FAULTED
+        {
+            self.faulted();
+            return;
+        }
+        
         self.processingClock += deltaTime;
         self.inputClock += deltaTime;
         self.outputClock += deltaTime;
@@ -202,6 +205,7 @@ impl Machine
     }
 
     #[allow(unused_variables)]
+    // Always has supply to input, like the start of a line
     fn spawnerInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
         if self.inputInventory < self.inputInvCapacity
@@ -213,7 +217,7 @@ impl Machine
         return false;
     }
 
-    // fills inputInventory
+    // Inputs only if output is empty
     fn defaultInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
         // check if space in input and output inventories
@@ -249,6 +253,50 @@ impl Machine
         return false;
     }
 
+    // Inputs even if there is something in the output
+    fn flowInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    {
+        // check if space in input and output inventories
+        if self.inputInventory >= self.inputInvCapacity
+        {   
+            return false; 
+        }
+      
+        for _i in 0 as usize..self.inputIDs.len()
+        {   
+            let currentStructIDs = self.inputIDs[self.nextInput];
+            // gets the machine of interest 
+            let currentMachine = machines.get_mut(&currentStructIDs.machineID).expect("Value does not exist");
+            // num of items on this belt
+            let numOnBelt = currentMachine.beltInventories[currentStructIDs.laneID];
+
+            // belt has something 
+            if numOnBelt > 0
+            {
+                currentMachine.beltInventories[currentStructIDs.laneID] -= 1;
+                self.inputInventory += 1;
+                self.nextInput += 1;
+                // stays the same, resets if out of bounds 
+                self.nextInput = self.nextInput % self.inputIDs.len();
+                return true;
+                
+            }
+
+            self.nextInput += 1;
+            self.nextInput = self.nextInput % self.inputIDs.len();
+        }
+
+        return false;
+    }
+
+    // Inputs one thing from every lane at once
+    fn multipleInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    {
+        // TODO
+        return true;
+    }
+
+    // Processess only if the output inventory is empty
     fn defaultProcessing(&mut self, seed: i32) -> bool
     {
 
@@ -265,7 +313,7 @@ impl Machine
         }
 
         // check if room to output if processed
-        if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.processingTickHeld
+        if self.outputInventory != 0 || self.outputInvCapacity < self.throughput
         {
             if self.state != OPCState::BLOCKED
             {
@@ -305,6 +353,63 @@ impl Machine
         return true;
     }
 
+    // Processes if there is enough room in output, even if not empty
+    fn flowProcessing(&mut self, seed: i32) -> bool
+    {
+        // check if enough input 
+        if self.inputInventory < self.cost
+        { 
+            if self.state != OPCState::STARVED
+            {
+                self.state = OPCState::STARVED;
+                self.stateChangeCount += 1;
+                println!("ID {}: Starved.", self.id);
+            }
+            return false;
+        }
+
+        // check if room to output if processed
+        if self.outputInvCapacity - self.outputInventory < self.throughput
+        {
+            if self.state != OPCState::BLOCKED
+            {
+                self.state = OPCState::BLOCKED;
+                self.stateChangeCount += 1;
+                println!("ID {}: Blocked.", self.id);
+            }
+            return false;
+        }
+        
+        // process 
+        self.inputInventory -= self.cost;
+        self.consumedCount += self.cost;
+
+        self.outputInventory += self.throughput;
+        self.producedCount += self.throughput;
+
+        if self.state != OPCState::PRODUCING
+        {
+            self.state = OPCState::PRODUCING;
+            println!("ID {}: Switched back to producing state and produced.", self.id);
+        }
+        else {
+            println!("ID {}: Produced.", self.id);
+        }
+
+        // TODO: fixable when auto recovery time added
+        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
+        if (seed % 1000) as f32 / 1000.0 < self.faultChance
+        {
+            // Debug logging to show the seed when the machine faults
+            println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.faultChance);
+            self.state = OPCState::FAULTED;
+            self.stateChangeCount += 1;
+        }
+
+        return true;
+    }
+
+    // Outputs one thing onto one lane at a time
     fn defaultOutput(&mut self) -> bool
     {
         // iterate through outputLanes
@@ -327,6 +432,14 @@ impl Machine
         return false;
     }
 
+    // Outputs one thing onto EVERY lane at once
+    fn multipleOutput(&mut self) -> bool
+    {
+        // TODO
+        return true;
+    }
+
+    // Always has space to output, like the end of a line
     fn consumerOutput(&mut self) -> bool
     {
         if self.outputInventory > 0
@@ -529,11 +642,13 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
         {
             "spawner" => inputBehavior = Machine::spawnerInput,
             "default" => inputBehavior = Machine::defaultInput,
+            "flow" => inputBehavior = Machine::flowInput,
             _ => (),
         }
         match machine.processingBehavior.to_lowercase().as_str()
         {
             "default" => processingBehavior = Machine::defaultProcessing,
+            "flow" => processingBehavior = Machine::flowProcessing,
             _ => (),
         }
         match machine.outputBehavior.to_lowercase().as_str()
