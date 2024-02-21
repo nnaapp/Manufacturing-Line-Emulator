@@ -130,6 +130,8 @@ impl Machine
         }
     }
 
+    
+
     // Function for producing state
     fn producing(&mut self, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
@@ -349,12 +351,13 @@ impl Machine
     }
 
     #[allow(unused_variables)]
-    // Always returns true, to simulate having infinite supply
-    fn spawner_input(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    fn spawnerInput(&mut self, machines: &mut HashMap<usize, Machine>)
     {
-        return true;
+        if self.inputInventory < self.inputInvCapacity
+        {
+            self.inputInventory += 1;
+        }
     }
-
     #[allow(unused_variables)]
     // Algorithm for evenly pushing output onto multiple lanes, favoring lower IDs/indices for imbalances
     fn multilane_push(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
@@ -420,6 +423,47 @@ impl Machine
         
         return true;
     }
+    // fills inputInventory
+    fn defaultInput(&mut self, machines: &mut HashMap<usize, Machine>)
+    {
+        if self.inBehavior.is_none()
+        {
+            println!("ID {}: Input behavior function pointer is None", self.id);
+            return;
+        }
+
+        // check if space in input and output inventories
+        if self.outputInventory > 0 || (self.inputInventory >= self.inputInvCapacity)
+        {   
+            //self.state = OPCState::BLOCKED;
+            return; 
+        }
+      
+        for i in 0 as usize..self.inputIDs.len()
+        {   
+            let currentStructIDs = self.inputIDs[self.nextInput];
+            // gets the machine of interest 
+            let currentMachine = machines.get_mut(&currentStructIDs.machineID).expect("Value does not exist");
+            // num of items on this belt
+            let numOnBelt = currentMachine.beltInventories[currentStructIDs.laneID];
+
+            // belt has something 
+            if numOnBelt > 0
+            {
+                currentMachine.beltInventories[currentStructIDs.laneID] -= 1;
+                self.inputInventory += 1;
+                self.nextInput += 1;
+                // stays the same, resets if out of bounds 
+                self.nextInput = self.nextInput % self.inputIDs.len();
+                break;
+                
+            }
+
+            self.nextInput += 1;
+            self.nextInput = self.nextInput % self.inputIDs.len();
+        }
+    }
+
     fn defaultOutput(&mut self, machines: &mut HashMap<usize, Machine>)
     {
         // Checks if Machine's outBehavior is none
