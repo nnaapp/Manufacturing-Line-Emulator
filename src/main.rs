@@ -420,6 +420,46 @@ impl Machine
         
         return true;
     }
+    fn defaultOutput(&mut self, machines: &mut HashMap<usize, Machine>)
+    {
+        // Checks if Machine's outBehavior is none
+        if self.outBehavior.is_none()
+        {
+            println!("ID {}: outBehavior function pointer is None", self.id);
+            return;
+        }
+
+        // iterate through outputLanes
+        for i in 0 as usize..self.outputLanes
+        {
+            // prevent nextOutput from going out of bounds
+            if self.nextOutput >= self.beltInventories.len()
+            {
+                self.nextOutput = 0;
+            }
+
+            // move 1 item from output inventory to nextOutput
+            if self.outputInventory > 0 && self.beltInventories[self.nextOutput] < self.capacity
+            {
+                self.beltInventories[self.nextOutput] += 1;
+                self.outputInventory -= 1;
+                self.nextOutput += 1;
+                break;
+            }
+
+            self.nextOutput += 1;
+        } // end loop
+
+        return;
+    }
+
+    fn consumerOutput(&mut self, machines: &mut HashMap<usize, Machine>)
+    {
+        if self.outputInventory > 0
+        {
+            self.outputInventory -= 1;
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -705,43 +745,3 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine
     }
 }
 
-fn defaultOutput(&mut self, machines: &mut HashMap<usize, Machine>)
-{
-    // Checks if Machine's outBehavior is none
-    if self.outBehavior.is_none()
-    {
-        println!("ID {}: outBehavior function pointer is None", self.id);
-        return;
-    }
-
-    // iterate through outputLanes
-    for i in 0 as usize..self.outputLanes
-    {
-        // prevent nextOutput from going out of bounds
-        if self.nextOutput >= self.beltInventories.len()
-        {
-            self.nextOutput = 0;
-        }
-
-        // move 1 item from output inventory to nextOutput
-        if self.outputInventory > 0 && self.beltInventories[self.nextOutput] < self.capacity
-        {
-            self.beltInventories[self.nextOutput] += 1;
-            self.outputInventory -= 1;
-            self.nextOutput += 1;
-            break;
-        }
-
-        self.nextOutput += 1;
-    } // end loop
-
-    return;
-}
-
-fn consumerOutput(&mut self, machines: &mut HashMap<usize, Machine>)
-{
-    if self.outputInventory > 0
-    {
-        self.outputInventory -= 1;
-    }
-}
