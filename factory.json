@@ -4,35 +4,38 @@
     "description": "A simple manufacturing line for product assembly",
     "simSpeed": 1.0,
     "pollRate": 100,
-    "Runtime": 10,
+    "Runtime": 200,
     "Machines": [
       {
-        "id": 0,
-        "tickSpeed": 250,
-        "failChance": 0.0,
-        "cost": 1,
-        "throughput": 1,
-        "state": "PRODUCING",
-        "faultMessage": "Default Fault Code.",
-        "inputIDs": [
-          {
-            "machineID": 0,
-            "laneID": 0
-          }
-        ], 
-        "inBehavior": "SPAWNER", 
-        "outputLanes": 1,
-        "outBehavior": "DEFAULT",
-        "capacity": 2
-
+          "id": 0,
+          "cost": 1,
+          "throughput": 4,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "inputIDs": [
+            {
+              "machineID": 0,
+              "laneID": 0
+            }
+          ], 
+          "inputBehavior": "SPAWNER", 
+          "inputSpeed": 900,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 1500,
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 375,
+          "outputCapacity": 4,
+          "outputLanes": 2,
+          "beltCapacity": 4
         },
         {
           "id": 1,
-          "tickSpeed": 1000,
-          "failChance": 0.0,
           "cost": 2,
-          "throughput": 2,
+          "throughput": 1,
           "state": "PRODUCING",
+          "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
           "inputIDs": [
             {
@@ -40,18 +43,47 @@
               "laneID": 0
             }
           ], 
-          "inBehavior": "DEFAULT", 
-          "outputLanes": 2,
-          "outBehavior": "DEFAULT",
-          "capacity": 6
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 700,
+          "inputCapacity": 2,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 1500,
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 700,
+          "outputCapacity": 1,
+          "outputLanes": 1,
+          "beltCapacity": 2
         },
         {
           "id": 2,
-          "tickSpeed": 2000,
-          "failChance": 0.0,
-          "cost": 4,
+          "cost": 2,
           "throughput": 1,
           "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "inputIDs": [
+            {
+              "machineID": 0 ,
+              "laneID": 1
+            }
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 700,
+          "inputCapacity": 2,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 1500,
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 700,
+          "outputCapacity": 1,
+          "outputLanes": 1,
+          "beltCapacity": 2
+        },
+        {
+          "id": 3,
+          "cost": 2,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
           "inputIDs": [
             {
@@ -59,14 +91,20 @@
               "laneID": 0
             },
             {
-              "machineID": 1,
-              "laneID": 1
+              "machineID": 2,
+              "laneID": 0
             }
           ], 
-          "inBehavior": "DEFAULT", 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 700,
+          "inputCapacity": 2,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 1500,
+          "outputBehavior": "CONSUMER",
+          "outputSpeed": 700,
+          "outputCapacity": 1,
           "outputLanes": 1,
-          "outBehavior": "CONSUMER",
-          "capacity": 8
+          "beltCapacity": 999
         }
     ]
   }

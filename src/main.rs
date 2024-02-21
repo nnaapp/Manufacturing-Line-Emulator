@@ -53,19 +53,37 @@ struct MachineLaneID
 struct Machine
 {
     id: usize,
-    processClock: u128, // deltaTime is in milliseconds
-    processTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
-    failChance: f32,
     cost: usize, // Cost to produce
     throughput: usize, // How much gets produced
     state: OPCState,
+    faultChance: f32,
     faultMessage: String, //string for fault messages 
+
+    processingBehavior: Option<fn(&mut Machine, i32) -> bool>, 
+    processingClock: u128, // deltaTime is in milliseconds
+    processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
+    processingTickHeld: bool,
+
+    inputBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
+    inputClock: u128,
+    inputTickSpeed: u128, // tick for pulling input into inputInventory
+    inputTickHeld: bool,
     inputLanes: usize, // Number of input lanes
     inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
-    inBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
-    outputLanes: usize,
-    outBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>,
-    capacity: usize, // Capacity of EACH beltInventories
+    inputInventory: usize, // storage place in machine before process 
+    inputInvCapacity: usize, 
+    nextInput: usize, // the input lane to start checking from 
+    
+    outputBehavior: Option<fn(&mut Machine) -> bool>,
+    outputClock: u128, 
+    outputTickSpeed: u128, // tick for outputting 
+    outputTickHeld: bool,
+    outputInventory: usize, // represents num of items in it 
+    outputInvCapacity: usize,
+    nextOutput: usize, // the output lane to start checkng from
+
+    outputLanes: usize, // number out output lanes
+    beltCapacity: usize, // Capacity of EACH beltInventories
     beltInventories: Vec<usize>, // Vector of inventories, one per output lane
 
     producedCount: usize,
@@ -74,7 +92,9 @@ struct Machine
 }
 impl Machine
 {
-    fn new(id: usize, processTickSpeed: u128, failChance: f32, cost: usize, throughput: usize, state: OPCState, faultMessage: String, inputLanes: usize, outputLanes: usize, capacity: usize) -> Self
+    fn new(id: usize, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String,
+            processingTickSpeed: u128, inputTickSpeed: u128, inputLanes: usize, inputInvCapacity: usize,
+            outputTickSpeed: u128, outputInvCapacity: usize, outputLanes: usize, beltCapacity: usize) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
         inIDs.reserve(inputLanes);
@@ -82,113 +102,96 @@ impl Machine
 
         let newMachine = Machine {
             id,
-            processClock: 0,
-            processTickSpeed,
-            failChance,
             cost,
             throughput,
             state,
+            faultChance,
             faultMessage,
+
+            processingBehavior: None,
+            processingClock: 0,
+            processingTickSpeed,
+            processingTickHeld: false,
+            
+            inputBehavior: None,
+            inputClock: 0,
+            inputTickSpeed,
+            inputTickHeld: false,
             inputLanes,
             inputIDs: inIDs,
-            inBehavior: None,
+            inputInventory: 0,
+            inputInvCapacity,
+            nextInput: 0,
+            
+            outputBehavior: None,
+            outputClock: 0,
+            outputTickSpeed,
+            outputTickHeld: false,
+            outputInventory: 0,
+            outputInvCapacity,
+            nextOutput: 0,
+
             outputLanes,
-            outBehavior: None,
-            capacity,
+            beltCapacity,
             beltInventories: inventories,
+            
             consumedCount: 0,
             producedCount: 0,
             stateChangeCount: 0,
         };
-        return newMachine;
-    }
 
-    fn set_behavior(&mut self, inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool, outBehvaior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool)
-    {
-        self.inBehavior = Some(inBehavior);
-        self.outBehavior = Some(outBehvaior);
+        return newMachine;
     }
 
     fn update(&mut self, deltaTime: u128, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
-        self.processClock += deltaTime;
+        self.processingClock += deltaTime;
+        self.inputClock += deltaTime;
+        self.outputClock += deltaTime;
+
+        // Execute an input tick 
+        if self.inputClock > self.inputTickSpeed || self.inputTickHeld
+        {
+            if self.inputBehavior.is_none()
+            {
+                println!("ID {}: Input behavior is not defined.", self.id);
+                return;
+            }
+            let inputBehavior = self.inputBehavior.unwrap();
+            // self.inputClock -= self.inputTickSpeed;
+            self.inputClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
+            // Hold the tick on failure, so we do not wait needlessly
+            self.inputTickHeld = !inputBehavior(self, machines);
+        }
         
-        // If it is not time to execute a tick, return
-        if self.processClock < self.processTickSpeed
+        // Execute a process tick 
+        if self.processingClock > self.processingTickSpeed || self.processingTickHeld
         {
-            return;
-        }
-
-        // Execute a tick
-        self.processClock -= self.processTickSpeed;
-        match self.state
-        {
-            OPCState::PRODUCING=>self.producing(seed, machines),
-            OPCState::FAULTED=>self.faulted(),
-            OPCState::BLOCKED=>self.blocked(machines),
-            OPCState::STARVED=>self.starved(machines),
-        }
-    }
-
-    
-
-    // Function for producing state
-    fn producing(&mut self, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
-    {
-        //println!("Producing.");
-        if self.inBehavior.is_none() || self.outBehavior.is_none()
-        {
-            println!("ID {}: One or more behaviors' function pointer is None", self.id);
-            return;
-        }
-
-        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-        let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputIDs.len()
-        {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
-        }
-
-        // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
-        let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
-        if inBehavior(self, machines)
-        {
-            let outBehavior = self.outBehavior.expect("This shouldn't be possible.");
-            if outBehavior(self, machines)
+            if self.processingBehavior.is_none()
             {
-                println!("ID {}: Pushed", self.id);
-                self.producedCount += self.throughput;
-                self.consumedCount += self.cost;
+                println!("ID {}: Processing behavior is not defined.", self.id);
+                return;
             }
-            else
+            let processingBehavior = self.processingBehavior.unwrap();
+            // self.processingClock -= self.processingTickSpeed;
+            self.processingClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
+            // Hold the tick on failure, so we do not wait needlessly
+            self.processingTickHeld = !processingBehavior(self, seed);
+        }
+
+        // Execute a output tick 
+        if self.outputClock > self.outputTickSpeed || self.outputTickHeld
+        {
+            if self.outputBehavior.is_none()
             {
-                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputIDs.len()
-                {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
-                }
-
-                // enough input, but can't output
-                self.state = OPCState::BLOCKED;
-                self.stateChangeCount += 1;
-                println!("ID {}: Blocked, no room to output", self.id);
+                println!("ID {}: Output behavior is not defined.", self.id);
+                return;
             }
-        }
-        else
-        {
-            // not enough input
-            self.state = OPCState::STARVED; 
-            self.stateChangeCount += 1;
-            println!("ID {}: Starved, not enough supply", self.id);
-        }
-
-        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
-        if (seed % 1000) as f32 / 1000.0 < self.failChance
-        {
-            // Debug logging to show the seed when the machine faults
-            println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.failChance);
-            self.state = OPCState::FAULTED;
-            self.stateChangeCount += 1;
+            let outputBehavior = self.outputBehavior.unwrap();
+            // self.outputClock -= self.outputTickSpeed;
+            self.outputClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
+            // Hold the tick on failure, so we do not wait needlessly
+            self.outputTickHeld = !outputBehavior(self);
         }
     }
 
@@ -198,248 +201,28 @@ impl Machine
         println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
     }
 
-
-    fn blocked(&mut self, machines: &mut HashMap<usize, Machine>) 
-    {
-        //Error Check if returns is_non, error and exit.
-        if self.inBehavior.is_none() || self.outBehavior.is_none()
-        {
-            println!("ID {}: One or more behaviors' function pointer is None", self.id);
-            return;
-        }
-
-        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-        let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputIDs.len()
-        {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
-        }
-
-        // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
-        let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
-        if inBehavior(self, machines)
-        {
-            let outBehavior = self.outBehavior.expect("This shouldn't be possible.");
-            if outBehavior(self, machines)
-            {
-                println!("ID {}: Pushed, Switched to Producing", self.id);
-                self.state = OPCState::PRODUCING;
-                self.stateChangeCount += 1;
-                self.producedCount += self.throughput;
-                self.consumedCount += self.cost;
-            }
-            else
-            {
-                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputIDs.len()
-                {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
-                }
-
-                //still blocked stay that way
-                println!("ID {}: Blocked.", self.id);
-            }
-        }
-        else
-        {
-            //needs dual states implimented for when both blocked and starved
-            // track state change too
-        }
-    }
-
-    fn starved(&mut self, machines: &mut HashMap<usize, Machine>) 
-    {
-        //Error Check if returns is_non, error and exit.
-        if self.inBehavior.is_none() || self.outBehavior.is_none()
-        {
-            println!("ID {}: One or more behaviors' function pointer is None", self.id);
-            return;
-        }
-
-        // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-        let mut invBackups = Vec::<usize>::new();
-        for i in 0..self.inputIDs.len()
-        {
-            invBackups.push(machines.get(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID]);
-        }
-
-        // Expect gets the contents of a "Some" Option, and throws the given error message if it is None
-        let inBehavior = self.inBehavior.expect("This shouldn't be possible.");
-        if inBehavior(self, machines)
-        {
-            let outBehavior = self.outBehavior.expect("This shouldn't be possible.");
-            if outBehavior(self, machines)
-            {
-                println!("ID {}: Pushed, Switched to Producing", self.id);
-                self.state = OPCState::PRODUCING;
-                self.stateChangeCount += 1;
-                self.producedCount += self.throughput;
-                self.consumedCount += self.cost;
-            }
-            else
-            {
-                // TODO: make this less awful, try to make it so it doesnt draw from input before it knows if its blocked or not
-                for i in 0..self.inputIDs.len()
-                {
-                    machines.get_mut(&self.inputIDs[i].machineID).unwrap().beltInventories[self.inputIDs[i].laneID] = invBackups[i];
-                }
-                
-                //If output blocked change to blocked state
-                println!("ID {}: Output is Blocked, changing state.", self.id);
-                self.state = OPCState::BLOCKED;
-                self.stateChangeCount += 1;
-            }
-        }
-        else
-        {
-            println!("ID {}: Starved.", self.id); 
-        }
-    }
-
-    // Algorithm for evenly pulling from multiple input lanes, favoring lower IDs/indices for imbalances
-    // This algorithm can assume there is room for the input, because it will only be called if there IS room
-    fn multilane_pull(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
-    {
-        // Calculate the ideal amount of things to take from each lane
-        let mut inPerLane = vec![0; self.inputLanes];
-        for i in 0..self.inputLanes
-        {
-            inPerLane[i] = self.cost / self.inputLanes;
-        }
-        inPerLane[0] += self.cost % self.inputLanes;
-
-        // Find what lanes possess this ideal amount to supply, and what lanes do not
-        let mut needed = 0; // Track how much excess is needed from lanes that have extra
-        for i in 0..self.inputLanes
-        {
-            let currentID = self.inputIDs[i];
-            if machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID] < inPerLane[i]
-            {
-                let floating = inPerLane[i] - machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID];
-                inPerLane[i] -= floating;
-                needed += floating;
-            }
-        }
-
-        // Try to draw the needed amount from lanes that have an amount of excess available
-        for i in 0..self.inputLanes
-        {
-            let currentID = self.inputIDs[i];
-            let mut available = machines.get(&currentID.machineID).unwrap().beltInventories[currentID.laneID] - inPerLane[i]; 
-            if needed != 0 && available > 0
-            {
-                if available > needed { available = needed; }
-                inPerLane[i] += available;
-                needed -= available;
-            }
-        }
-
-        // If all the need could be fulfilled, subtract the input and signal that it has been taken
-        if needed == 0
-        {
-            for i in 0..self.inputLanes
-            {
-                let currentID = self.inputIDs[i];
-                // println!("{} {}", machines.get_mut(&currentID.machineID).unwrap().beltInventories[currentID.laneID], inPerLane[i]);
-                machines.get_mut(&currentID.machineID).expect("Machine HashMap error").beltInventories[currentID.laneID] -= inPerLane[i];
-            }
-            return true;
-        }
-
-        // This only happens if demand could not be met
-        return false;
-    }
-
     #[allow(unused_variables)]
-    fn spawnerInput(&mut self, machines: &mut HashMap<usize, Machine>)
+    fn spawnerInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
         if self.inputInventory < self.inputInvCapacity
         {
             self.inputInventory += 1;
-        }
-    }
-    #[allow(unused_variables)]
-    // Algorithm for evenly pushing output onto multiple lanes, favoring lower IDs/indices for imbalances
-    fn multilane_push(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
-    {
-        // Calculating the ideal amount of things to put on each output lane
-        let mut outPerLane = vec![0; self.outputLanes];
-        for i in 0..self.outputLanes
-        {
-            outPerLane[i] = self.throughput / self.outputLanes;
-        }
-        outPerLane[0] += self.throughput % self.outputLanes;
-
-        // Find what will fit without shifting any around
-        let mut remaining = 0; // Remaining product that is not yet on a lane
-        for i in 0..self.outputLanes
-        {
-            let sum = self.beltInventories[i] + outPerLane[i];
-            if sum > self.capacity
-            {
-                // Put the overflow in the remaining variable, keep the amount that will fit
-                let floating = sum - self.capacity;
-                outPerLane[i] -= floating;
-                remaining += floating;
-            }
-        }
-
-        // Put the remaining products in the nearest available space, on the next ID/index up
-        for i in 0..self.outputLanes
-        {
-            let sum = self.beltInventories[i] + outPerLane[i];
-            if remaining != 0 && sum < self.capacity
-            {
-                let mut available = self.capacity - sum;
-                if available > remaining { available = remaining; }
-                outPerLane[i] += available;
-                remaining -= available;
-            }
-        }
-
-        // If all the output could fit, take input and produce output
-        if remaining == 0
-        {
-            for i in 0..self.outputLanes
-            {
-                self.beltInventories[i] += outPerLane[i];
-            }
             return true;
         }
 
-        // This only happens if the output could not fit
         return false;
     }
 
-    // Uses multilane_push, but just zeroes out every beltInventories afterwards, for infinite space 
-    fn consumer_output(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
-    {
-        if !self.multilane_push(machines) { return false; }
-
-        for i in 0..self.beltInventories.len()
-        {
-            self.beltInventories[i] = 0;
-        }
-        
-        return true;
-    }
     // fills inputInventory
-    fn defaultInput(&mut self, machines: &mut HashMap<usize, Machine>)
+    fn defaultInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
-        if self.inBehavior.is_none()
-        {
-            println!("ID {}: Input behavior function pointer is None", self.id);
-            return;
-        }
-
         // check if space in input and output inventories
-        if self.outputInventory > 0 || (self.inputInventory >= self.inputInvCapacity)
+        if self.outputInventory > 0 || self.inputInventory >= self.inputInvCapacity
         {   
-            //self.state = OPCState::BLOCKED;
-            return; 
+            return false; 
         }
       
-        for i in 0 as usize..self.inputIDs.len()
+        for _i in 0 as usize..self.inputIDs.len()
         {   
             let currentStructIDs = self.inputIDs[self.nextInput];
             // gets the machine of interest 
@@ -455,71 +238,126 @@ impl Machine
                 self.nextInput += 1;
                 // stays the same, resets if out of bounds 
                 self.nextInput = self.nextInput % self.inputIDs.len();
-                break;
+                return true;
                 
             }
 
             self.nextInput += 1;
             self.nextInput = self.nextInput % self.inputIDs.len();
         }
+
+        return false;
     }
 
-    fn defaultOutput(&mut self, machines: &mut HashMap<usize, Machine>)
+    fn defaultProcessing(&mut self, seed: i32) -> bool
     {
-        // Checks if Machine's outBehavior is none
-        if self.outBehavior.is_none()
-        {
-            println!("ID {}: outBehavior function pointer is None", self.id);
-            return;
+
+        // check if enough input 
+        if self.inputInventory < self.cost
+        { 
+            if self.state != OPCState::STARVED
+            {
+                self.state = OPCState::STARVED;
+                self.stateChangeCount += 1;
+                println!("ID {}: Starved.", self.id);
+            }
+            return false;
         }
 
-        // iterate through outputLanes
-        for i in 0 as usize..self.outputLanes
+        // check if room to output if processed
+        if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.processingTickHeld
         {
-            // prevent nextOutput from going out of bounds
-            if self.nextOutput >= self.beltInventories.len()
+            if self.state != OPCState::BLOCKED
             {
-                self.nextOutput = 0;
+                self.state = OPCState::BLOCKED;
+                self.stateChangeCount += 1;
+                println!("ID {}: Blocked.", self.id);
             }
+            return false;
+        }
 
+        // process 
+        self.inputInventory -= self.cost;
+        self.consumedCount += self.cost;
+
+        self.outputInventory += self.throughput;
+        self.producedCount += self.throughput;
+
+        if self.state != OPCState::PRODUCING
+        {
+            self.state = OPCState::PRODUCING;
+            println!("ID {}: Switched back to producing state and produced.", self.id);
+        }
+        else {
+            println!("ID {}: Produced.", self.id);
+        }
+
+        // TODO: fixable when auto recovery time added
+        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
+        if (seed % 1000) as f32 / 1000.0 < self.faultChance
+        {
+            // Debug logging to show the seed when the machine faults
+            println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.faultChance);
+            self.state = OPCState::FAULTED;
+            self.stateChangeCount += 1;
+        }
+
+        return true;
+    }
+
+    fn defaultOutput(&mut self) -> bool
+    {
+        // iterate through outputLanes
+        for _i in 0 as usize..self.outputLanes
+        {
             // move 1 item from output inventory to nextOutput
-            if self.outputInventory > 0 && self.beltInventories[self.nextOutput] < self.capacity
+            if self.outputInventory > 0 && self.beltInventories[self.nextOutput] < self.beltCapacity
             {
                 self.beltInventories[self.nextOutput] += 1;
                 self.outputInventory -= 1;
                 self.nextOutput += 1;
-                break;
+                self.nextOutput = self.nextOutput % self.beltInventories.len();
+                return true;
             }
 
             self.nextOutput += 1;
+            self.nextOutput = self.nextOutput % self.beltInventories.len();
         } // end loop
 
-        return;
+        return false;
     }
 
-    fn consumerOutput(&mut self, machines: &mut HashMap<usize, Machine>)
+    fn consumerOutput(&mut self) -> bool
     {
         if self.outputInventory > 0
         {
             self.outputInventory -= 1;
+            return true;
         }
+
+        return false;
     }
 }
 
 #[derive(Debug, Deserialize)]
 struct JSONMachine {
     id: usize,
-    tickSpeed: u128,
-    failChance: f32,
     cost: usize,
     throughput: usize,
     state: String,
+    faultChance: f32,
     faultMessage: String,
     inputIDs: Vec<MachineLaneID>,
-    inBehavior: String,
+    inputBehavior: String,
+    inputSpeed: u128, // ms
+    inputCapacity: usize,
+    processingBehavior: String,
+    processingSpeed: u128,
+    outputBehavior: String,
+    outputSpeed: u128,
+    outputCapacity: usize,
     outputLanes: usize,
-    outBehavior: String,
-    capacity: usize,
+    beltCapacity: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -612,7 +450,7 @@ fn main() -> std::io::Result<()>
     for id in ids.iter()
     {
         let machine = machines.get(id).unwrap();
-        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processTickSpeed as f64));
+        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processingTickSpeed as f64));
 
         writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
         writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
@@ -668,34 +506,46 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
         
         let mut newMachine = Machine::new(
             machine.id,
-            machine.tickSpeed,
-            machine.failChance,
             machine.cost,
             machine.throughput,
             state,
+            machine.faultChance,
             machine.faultMessage,
+            machine.processingSpeed,
+            machine.inputSpeed,
             machine.inputIDs.len(),
+            machine.inputCapacity,
+            machine.outputSpeed,
+            machine.outputCapacity,
             machine.outputLanes,
-            machine.capacity
+            machine.beltCapacity
         );
         newMachine.inputIDs = machine.inputIDs;
 
-        let mut inBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_pull;
-        let mut outBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::multilane_push;
-        match machine.inBehavior.to_lowercase().as_str()
+        let mut inputBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::defaultInput;
+        let mut processingBehavior: fn(&mut Machine, i32) -> bool = Machine::defaultProcessing;
+        let mut outputBehavior: fn(&mut Machine) -> bool = Machine::defaultOutput;
+        match machine.inputBehavior.to_lowercase().as_str()
         {
-            "spawner" => inBehavior = Machine::spawner_input,
-            "default" => inBehavior = Machine::multilane_pull,
+            "spawner" => inputBehavior = Machine::spawnerInput,
+            "default" => inputBehavior = Machine::defaultInput,
             _ => (),
         }
-        match machine.outBehavior.to_lowercase().as_str()
+        match machine.processingBehavior.to_lowercase().as_str()
         {
-            "consumer" => outBehavior = Machine::consumer_output,
-            "default" => outBehavior = Machine::multilane_push,
+            "default" => processingBehavior = Machine::defaultProcessing,
+            _ => (),
+        }
+        match machine.outputBehavior.to_lowercase().as_str()
+        {
+            "consumer" => outputBehavior = Machine::consumerOutput,
+            "default" => outputBehavior = Machine::defaultOutput,
             _ => (),
         }
 
-        newMachine.set_behavior(inBehavior, outBehavior);
+        newMachine.inputBehavior = Some(inputBehavior);
+        newMachine.processingBehavior = Some(processingBehavior);
+        newMachine.outputBehavior = Some(outputBehavior);
 
         ids.push(machine.id);
         machines.insert(machine.id, newMachine);
