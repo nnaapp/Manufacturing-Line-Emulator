@@ -726,6 +726,24 @@ fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<Strin
                 producedCountVarName,
                 machines[i].producedCount as u64));
             nodeIDs.insert(format!("{machineID}-produced-count"), producedCountNodeID);
+
+            let inputInventoryVarName = "input-inventory";
+            let inputInventoryNodeID = NodeId::new(ns, format!("{machineID}-input-inventory"));
+            variables.push(
+                Variable::new(&inputInventoryNodeID, 
+                inputInventoryVarName,
+                inputInventoryVarName,
+                machines[i].inputInventory as u64));
+            nodeIDs.insert(format!("{machineID}-input-inventory"), inputInventoryNodeID);
+
+            let outputInventoryVarName = "output-inventory";
+            let outputInventoryNodeID = NodeId::new(ns, format!("{machineID}-output-inventory"));
+            variables.push(
+                Variable::new(&outputInventoryNodeID, 
+                outputInventoryVarName,
+                outputInventoryVarName,
+                machines[i].outputInventory as u64));
+            nodeIDs.insert(format!("{machineID}-output-inventory"), outputInventoryNodeID);
             
             let _ = addressSpace.add_variables(variables, &machineFolderID);
         }
@@ -751,6 +769,12 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine
 
         let producedCountNodeID = nodeIDs.get(&format!("{machineID}-produced-count")).expect("NodeId ceased to exist.");
         addressSpace.set_variable_value(producedCountNodeID, machine.producedCount as u64, &now, &now);
+
+        let inputInventoryNodeID = nodeIDs.get(&format!("{machineID}-input-inventory")).expect("NodeId ceased to exist.");
+        addressSpace.set_variable_value(inputInventoryNodeID, machine.inputInventory as u64, &now, &now);
+
+        let outputInventoryNodeID = nodeIDs.get(&format!("{machineID}-output-inventory")).expect("NodeId ceased to exist.");
+        addressSpace.set_variable_value(outputInventoryNodeID, machine.outputInventory as u64, &now, &now);
     }
 }
 
