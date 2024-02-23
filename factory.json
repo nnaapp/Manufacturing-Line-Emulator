@@ -12,7 +12,7 @@
           "throughput": 12,
           "state": "PRODUCING",
           "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
+          "faultMessage": "Machine exploded.",
           "inputIDs": [
             {
               "machineID": 0,
