@@ -19,6 +19,9 @@ extern crate opcua;
 use std::path::PathBuf;
 use opcua::server::prelude::*;
 
+extern crate local_ip_address;
+use local_ip_address::local_ip;
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum OPCState
@@ -290,11 +293,11 @@ impl Machine
     }
 
     // Inputs one thing from every lane at once
-    fn multipleInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
-    {
-        // TODO
-        return true;
-    }
+    // fn multipleInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    // {
+    //     // TODO
+    //     return true;
+    // }
 
     // Processess only if the output inventory is empty
     fn defaultProcessing(&mut self, seed: i32) -> bool
@@ -433,11 +436,11 @@ impl Machine
     }
 
     // Outputs one thing onto EVERY lane at once
-    fn multipleOutput(&mut self) -> bool
-    {
-        // TODO
-        return true;
-    }
+    // fn multipleOutput(&mut self) -> bool
+    // {
+    //     // TODO
+    //     return true;
+    // }
 
     // Always has space to output, like the end of a line
     fn consumerOutput(&mut self) -> bool
@@ -672,7 +675,8 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
 fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<String, NodeId>)
 {
-    let server = Server::new(ServerConfig::load(&PathBuf::from("./server.conf")).unwrap());
+    // let server = Server::new(ServerConfig::load(&PathBuf::from("./server.conf")).unwrap());
+    let server = initServer();
 
     let ns = {
         let address_space = server.address_space();
@@ -778,3 +782,35 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine
     }
 }
 
+fn initServer() -> Server
+{
+    let ipAddress = local_ip().expect("IP could not be found.");
+    let hostName = hostname().expect("Hostname could not be found.");
+    let discoveryURL = format!("opc.tcp://{ipAddress}:4855/");
+    println!("Discovery URL: {}", discoveryURL);
+
+    let server = ServerBuilder::new()
+        .application_name("OPC UA Simulation Server")
+        .application_uri("urn:OPC UA Simulation Server")
+        .create_sample_keypair(true)
+        .certificate_path(&PathBuf::from("own/cert.der"))
+        .private_key_path(&PathBuf::from("private/private.pem"))
+        .pki_dir("./pki-server")
+        .discovery_server_url(None)
+        .host_and_port(ipAddress.to_string(), 4855)
+        .discovery_urls(vec![format!("/"), format!("opc.tcp://{hostName}:4855/")])
+        .endpoints(
+            [
+                ("none", "/", SecurityPolicy::None, MessageSecurityMode::None, &["ANONYMOUS"]),
+                ("basic128rsa15_sign", "/", SecurityPolicy::Basic128Rsa15, MessageSecurityMode::Sign, &["ANONYMOUS"]),
+                ("basic128rsa15_sign_encrypt", "/", SecurityPolicy::Basic128Rsa15, MessageSecurityMode::SignAndEncrypt, &["ANONYMOUS"]),
+                ("basic256_sign", "/", SecurityPolicy::Basic256, MessageSecurityMode::Sign, &["ANONYMOUS"]),
+                ("basic256_sign_encrypt", "/", SecurityPolicy::Basic256, MessageSecurityMode::SignAndEncrypt, &["ANONYMOUS"]),
+                ("basic256sha256_sign", "/", SecurityPolicy::Basic256Sha256, MessageSecurityMode::Sign, &["ANONYMOUS"]),
+                ("basic256sha256_sign_encrypt", "/", SecurityPolicy::Basic256Sha256, MessageSecurityMode::SignAndEncrypt, &["ANONYMOUS"]),
+            ].iter().map(|v| {
+                (v.0.to_string(), ServerEndpoint::from((v.1, v.2, v.3, &v.4[..])))
+            }).collect())
+        .server().unwrap();
+    return server;
+}

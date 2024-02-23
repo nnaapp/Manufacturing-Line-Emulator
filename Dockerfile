@@ -4,6 +4,9 @@ FROM rust:latest
 # Set the working directory in the container to /my
 WORKDIR /usr/src/manufacturing
 
+# Expose port
+EXPOSE 4855
+
 # Copy the Rust project files to the working directory
 COPY . .
 

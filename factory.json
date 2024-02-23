@@ -4,7 +4,7 @@
     "description": "A simple manufacturing line for product assembly",
     "simSpeed": 1.0,
     "pollRate": 100,
-    "Runtime": 200,
+    "Runtime": 100,
     "Machines": [
       {
           "id": 0,
