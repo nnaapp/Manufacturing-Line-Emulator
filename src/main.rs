@@ -163,13 +163,13 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
         );
         newMachine.inputIDs = machine.inputIDs;
 
-        let mut inputBehavior: fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool = Machine::defaultInput;
-        let mut processingBehavior: fn(&mut Machine, i32) -> bool = Machine::defaultProcessing;
-        let mut outputBehavior: fn(&mut Machine) -> bool = Machine::defaultOutput;
+        let mut inputBehavior: fn(&mut Machine, u128, &mut HashMap<usize, Machine>) -> bool = Machine::singleInput;
+        let mut processingBehavior: fn(&mut Machine, u128, i32) -> bool = Machine::defaultProcessing;
+        let mut outputBehavior: fn(&mut Machine, u128) -> bool = Machine::singleOutput;
         match machine.inputBehavior.to_lowercase().as_str()
         {
             "spawner" => inputBehavior = Machine::spawnerInput,
-            "default" => inputBehavior = Machine::defaultInput,
+            "single" => inputBehavior = Machine::singleInput,
             "flow" => inputBehavior = Machine::flowInput,
             _ => (),
         }
@@ -182,7 +182,7 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
         match machine.outputBehavior.to_lowercase().as_str()
         {
             "consumer" => outputBehavior = Machine::consumerOutput,
-            "default" => outputBehavior = Machine::defaultOutput,
+            "default" => outputBehavior = Machine::singleOutput,
             _ => (),
         }
 

@@ -46,7 +46,7 @@ pub struct JSONData {
 
 pub fn read_json_file(file_path: &str) -> String {
     let mut file_content = String::new();
-    let mut file = File::open(&PathBuf::from("factory.json")).expect("Failed to open file");
+    let mut file = File::open(&PathBuf::from(file_path)).expect("Failed to open file");
     file.read_to_string(&mut file_content).expect("Failed to read file content");
     file_content
 }

@@ -43,24 +43,26 @@ pub struct Machine
     pub faultChance: f32,
     pub faultMessage: String, //string for fault messages 
 
-    pub processingBehavior: Option<fn(&mut Machine, i32) -> bool>, 
+    pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
     pub processingClock: u128, // deltaTime is in milliseconds
     pub processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
-    pub processingTickHeld: bool,
+    pub processingInProgress: bool,
 
-    pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
+    pub inputBehavior: Option<fn(&mut Machine, u128, &mut HashMap<usize, Machine>) -> bool>, // Function pointer that can also be None, used to define behavior
     pub inputClock: u128,
     pub inputTickSpeed: u128, // tick for pulling input into inputInventory
-    pub inputTickHeld: bool,
+    pub inputInProgress: bool,
+    pub inputWaiting: bool, // is there room for input, and input to be taken?
     pub inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
     pub inputInventory: usize, // storage place in machine before process 
     pub inputInvCapacity: usize, 
     pub nextInput: usize, // the input lane to start checking from 
 
-    pub outputBehavior: Option<fn(&mut Machine) -> bool>,
+    pub outputBehavior: Option<fn(&mut Machine, u128) -> bool>,
     pub outputClock: u128, 
     pub outputTickSpeed: u128, // tick for outputting 
-    pub outputTickHeld: bool,
+    pub outputInProgress: bool,
+    pub outputWaiting: bool, // is there output in the machine, and room to spit it out?
     pub outputInventory: usize, // represents num of items in it 
     pub outputInvCapacity: usize,
     pub nextOutput: usize, // the output lane to start checkng from
@@ -94,12 +96,13 @@ impl Machine
             processingBehavior: None,
             processingClock: 0,
             processingTickSpeed,
-            processingTickHeld: false,
+            processingInProgress: false,
             
             inputBehavior: None,
             inputClock: 0,
             inputTickSpeed,
-            inputTickHeld: false,
+            inputInProgress: false,
+            inputWaiting: false,
             inputIDs: inIDs,
             inputInventory: 0,
             inputInvCapacity,
@@ -108,7 +111,8 @@ impl Machine
             outputBehavior: None,
             outputClock: 0,
             outputTickSpeed,
-            outputTickHeld: false,
+            outputInProgress: false,
+            outputWaiting: false,
             outputInventory: 0,
             outputInvCapacity,
             nextOutput: 0,
@@ -127,54 +131,46 @@ impl Machine
 
     pub fn update(&mut self, deltaTime: u128, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
-        self.processingClock += deltaTime;
-        self.inputClock += deltaTime;
-        self.outputClock += deltaTime;
-
-        // Execute an input tick 
-        if self.inputClock > self.inputTickSpeed || self.inputTickHeld
+        // Execute input
+        // Input needs to manage: 
+        //     inputInProgress
+        //     inputWaiting
+        //     inputClock
+        if self.inputBehavior.is_none()
         {
-            if self.inputBehavior.is_none()
-            {
-                println!("ID {}: Input behavior is not defined.", self.id);
-                return;
-            }
-            let inputBehavior = self.inputBehavior.unwrap();
-            // self.inputClock -= self.inputTickSpeed;
-            self.inputClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
-            // Hold the tick on failure, so we do not wait needlessly
-            self.inputTickHeld = !inputBehavior(self, machines);
+            println!("ID {}: Input behavior is not defined.", self.id);
+            self.faultMessage = format!("Simulation Error: input behavior not defined.");
+            return;
         }
+        let inputBehavior = self.inputBehavior.unwrap();
+        inputBehavior(self, deltaTime, machines);
         
-        // Execute a process tick 
-        if self.processingClock > self.processingTickSpeed || self.processingTickHeld
+        // Execute processing 
+        // Processing needs to manage:
+        //     processingInProgress
+        //     processingClock
+        if self.processingBehavior.is_none()
         {
-            if self.processingBehavior.is_none()
-            {
-                println!("ID {}: Processing behavior is not defined.", self.id);
-                return;
-            }
-            let processingBehavior = self.processingBehavior.unwrap();
-            // self.processingClock -= self.processingTickSpeed;
-            self.processingClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
-            // Hold the tick on failure, so we do not wait needlessly
-            self.processingTickHeld = !processingBehavior(self, seed);
+            println!("ID {}: Processing behavior is not defined.", self.id);
+            self.faultMessage = format!("Simulation Error: processing behavior not defined.");
+            return;
         }
+        let processingBehavior = self.processingBehavior.unwrap();
+        processingBehavior(self, deltaTime, seed);
 
-        // Execute a output tick 
-        if self.outputClock > self.outputTickSpeed || self.outputTickHeld
+        // Execute output
+        // Output needs to manage:
+        //     outputInProgress
+        //     outputWaiting
+        //     outputClock
+        if self.outputBehavior.is_none()
         {
-            if self.outputBehavior.is_none()
-            {
-                println!("ID {}: Output behavior is not defined.", self.id);
-                return;
-            }
-            let outputBehavior = self.outputBehavior.unwrap();
-            // self.outputClock -= self.outputTickSpeed;
-            self.outputClock = 0; // Set to 0 due to new tick holding system, may cause inaccuracy
-            // Hold the tick on failure, so we do not wait needlessly
-            self.outputTickHeld = !outputBehavior(self);
+            println!("ID {}: Output behavior is not defined.", self.id);
+            self.faultMessage = format!("Simulation Error: output behavior not defined.");
+            return;
         }
+        let outputBehavior = self.outputBehavior.unwrap();
+        outputBehavior(self, deltaTime);
     }
 
     // Function for faulted state
@@ -183,28 +179,13 @@ impl Machine
         println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
     }
 
-    #[allow(unused_variables)]
-    // Always has supply to input, like the start of a line
-    pub fn spawnerInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    fn findInputSingle(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
     {
-        if self.inputInventory < self.inputInvCapacity
-        {
-            self.inputInventory += 1;
-            return true;
-        }
-
-        return false;
-    }
-
-    // Inputs only if output is empty
-    pub fn defaultInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
-    {
-        // check if space in input and output inventories
-        if self.outputInventory > 0 || self.inputInventory >= self.inputInvCapacity
+        if self.inputInventory >= self.inputInvCapacity
         {   
             return false; 
         }
-      
+
         for _i in 0 as usize..self.inputIDs.len()
         {   
             let currentStructIDs = self.inputIDs[self.nextInput];
@@ -214,16 +195,7 @@ impl Machine
             let numOnBelt = currentMachine.beltInventories[currentStructIDs.laneID];
 
             // belt has something 
-            if numOnBelt > 0
-            {
-                currentMachine.beltInventories[currentStructIDs.laneID] -= 1;
-                self.inputInventory += 1;
-                self.nextInput += 1;
-                // stays the same, resets if out of bounds 
-                self.nextInput = self.nextInput % self.inputIDs.len();
-                return true;
-                
-            }
+            if numOnBelt > 0 { return true; }
 
             self.nextInput += 1;
             self.nextInput = self.nextInput % self.inputIDs.len();
@@ -232,8 +204,95 @@ impl Machine
         return false;
     }
 
+    fn findOutputSingle(&mut self) -> bool
+    {
+        if self.outputInventory <= 0
+        {
+            return false;
+        }
+        
+        for _i in 0 as usize..self.outputLanes
+        {
+            if self.beltInventories[self.nextOutput] < self.beltCapacity { return true; }
+
+            self.nextOutput += 1;
+            self.nextOutput = self.nextOutput % self.beltInventories.len();
+        }
+        
+        return false;
+    }
+
+    #[allow(unused_variables)]
+    // Always has supply to input, like the start of a line
+    pub fn spawnerInput(&mut self, deltaTime: u128, machines: &mut HashMap<usize, Machine>) -> bool
+    {
+        if !self.inputInProgress && (self.inputInventory < self.inputInvCapacity)
+        {
+            // Set the input to be in progress
+            self.inputWaiting = true;
+            self.inputInProgress = true;
+            self.inputClock = 0;
+        }
+
+        if !self.inputInProgress 
+        { 
+            self.inputWaiting = false;
+            return false; 
+        }
+
+        if self.inputClock < self.inputTickSpeed
+        {
+            self.inputClock += deltaTime;
+            return false;
+        }
+
+        self.inputInventory += 1;
+        self.inputInProgress = false;
+        return true;        
+    }
+
+    // Inputs only ONE thing if output is empty,
+    // ASSUMES that findOutputSingle has been called
+    pub fn singleInput(&mut self, deltaTime: u128, machines: &mut HashMap<usize, Machine>) -> bool
+    {
+        if !self.inputInProgress && self.outputInventory <= 0 
+        {
+            if !self.findInputSingle(machines) { return false; }
+            // gets the machine of interest 
+            let currentMachineLaneID = self.inputIDs[self.nextInput];
+            let currentMachine = machines.get_mut(&currentMachineLaneID.machineID).expect("Value does not exist");
+            // Take 1 item off it (reserve so nothing else can take it, essentially)
+            currentMachine.beltInventories[currentMachineLaneID.laneID] -= 1;
+            // Increment nextInput for balanced taking of items
+            self.nextInput += 1;
+            self.nextInput = self.nextInput % self.inputIDs.len();
+
+            // Set the input to be in progress
+            self.inputWaiting = true;
+            self.inputInProgress = true;
+            self.inputClock = 0;
+        }
+
+        if !self.inputInProgress 
+        { 
+            self.inputWaiting = false;
+            return false; 
+        }
+
+        if self.inputClock < self.inputTickSpeed
+        {
+            self.inputClock += deltaTime;
+            return false;
+        }
+
+        self.inputInventory += 1;
+        self.inputInProgress = false;
+        return true;
+    }
+
     // Inputs even if there is something in the output
-    pub fn flowInput(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
+    // TODO: fix to work with new clock system
+    pub fn flowInput(&mut self, deltaTime: u128, machines: &mut HashMap<usize, Machine>) -> bool
     {
         // check if space in input and output inventories
         if self.inputInventory >= self.inputInvCapacity
@@ -276,30 +335,49 @@ impl Machine
     // }
 
     // Processess only if the output inventory is empty
-    pub fn defaultProcessing(&mut self, seed: i32) -> bool
+    pub fn defaultProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
     {
-
-        // check if enough input 
-        if self.inputInventory < self.cost
-        { 
-            if self.state != OPCState::STARVED
-            {
-                self.state = OPCState::STARVED;
-                self.stateChangeCount += 1;
-                println!("ID {}: Starved.", self.id);
+        if !self.processingInProgress && !self.inputWaiting && !self.outputWaiting
+        {
+            // check if enough input 
+            if self.inputInventory < self.cost
+            { 
+                if self.state != OPCState::STARVED
+                {
+                    self.state = OPCState::STARVED;
+                    self.stateChangeCount += 1;
+                    println!("ID {}: Starved.", self.id);
+                }
+                return false;
             }
-            return false;
+
+            // check if room to output if processed
+            if self.outputInventory != 0 || self.outputInvCapacity < self.throughput
+            {
+                if self.state != OPCState::BLOCKED
+                {
+                    self.state = OPCState::BLOCKED;
+                    self.stateChangeCount += 1;
+                    println!("ID {}: Blocked.", self.id);
+                }
+                return false;
+            }
         }
 
-        // check if room to output if processed
-        if self.outputInventory != 0 || self.outputInvCapacity < self.throughput
+        if !self.processingInProgress
+            && self.inputInventory >= self.cost
+            && self.outputInventory == 0 
+            && self.outputInvCapacity >= self.throughput
         {
-            if self.state != OPCState::BLOCKED
-            {
-                self.state = OPCState::BLOCKED;
-                self.stateChangeCount += 1;
-                println!("ID {}: Blocked.", self.id);
-            }
+            self.processingInProgress = true;
+            self.processingClock = 0;
+        }
+
+        if !self.processingInProgress { return false; }
+
+        if self.processingClock < self.processingTickSpeed
+        {
+            self.processingClock += deltaTime;
             return false;
         }
 
@@ -329,11 +407,13 @@ impl Machine
             self.stateChangeCount += 1;
         }
 
+        self.processingInProgress = false;
         return true;
     }
 
     // Processes if there is enough room in output, even if not empty
-    pub fn flowProcessing(&mut self, seed: i32) -> bool
+    // TODO: fix with new clock system
+    pub fn flowProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
     {
         // check if enough input 
         if self.inputInventory < self.cost
@@ -389,26 +469,39 @@ impl Machine
     }
 
     // Outputs one thing onto one lane at a time
-    pub fn defaultOutput(&mut self) -> bool
+    pub fn singleOutput(&mut self, deltaTime: u128) -> bool
     {
-        // iterate through outputLanes
-        for _i in 0 as usize..self.outputLanes
+        if !self.outputInProgress && self.outputInventory > 0
         {
-            // move 1 item from output inventory to nextOutput
-            if self.outputInventory > 0 && self.beltInventories[self.nextOutput] < self.beltCapacity
-            {
-                self.beltInventories[self.nextOutput] += 1;
-                self.outputInventory -= 1;
-                self.nextOutput += 1;
-                self.nextOutput = self.nextOutput % self.beltInventories.len();
-                return true;
-            }
+            if !self.findOutputSingle() { return false; }
 
-            self.nextOutput += 1;
-            self.nextOutput = self.nextOutput % self.beltInventories.len();
-        } // end loop
+            // Debating this one, unsure if this should be pre or post clock
+            // self.outputInventory -= 1;
+            self.outputWaiting = true;
+            self.outputInProgress = true;
+            self.outputClock = 0;
+        }
 
-        return false;
+        if !self.outputInProgress 
+        { 
+            self.outputWaiting = false;
+            return false; 
+        }
+
+        if self.outputClock < self.outputTickSpeed
+        {
+            self.outputClock += deltaTime;
+            return false;
+        }
+
+        self.outputInventory -= 1;
+        self.beltInventories[self.nextOutput] += 1;
+
+        self.nextOutput += 1;
+        self.nextOutput = self.nextOutput % self.beltInventories.len();
+
+        self.outputInProgress = false;
+        return true;
     }
 
     // Outputs one thing onto EVERY lane at once
@@ -419,14 +512,29 @@ impl Machine
     // }
 
     // Always has space to output, like the end of a line
-    pub fn consumerOutput(&mut self) -> bool
+    pub fn consumerOutput(&mut self, deltaTime: u128) -> bool
     {
-        if self.outputInventory > 0
+        if !self.outputInProgress && self.outputInventory > 0
         {
-            self.outputInventory -= 1;
-            return true;
+            self.outputWaiting = true;
+            self.outputInProgress = true;
+            self.outputClock = 0;
         }
 
-        return false;
+        if !self.outputInProgress 
+        { 
+            self.outputWaiting = false;
+            return false; 
+        }
+
+        if self.outputClock < self.outputTickSpeed
+        {
+            self.outputClock += deltaTime;
+            return false;
+        }
+
+        self.outputInventory -= 1;
+        self.outputInProgress = false;
+        return true;
     }
 }

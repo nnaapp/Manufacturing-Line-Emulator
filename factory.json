@@ -20,12 +20,12 @@
             }
           ], 
           "inputBehavior": "SPAWNER", 
-          "inputSpeed": 3000,
+          "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
           "processingSpeed": 3000,
           "outputBehavior": "DEFAULT",
-          "outputSpeed": 200,
+          "outputSpeed": 50,
           "outputCapacity": 12,
           "outputLanes": 2,
           "beltCapacity": 10
@@ -44,12 +44,12 @@
             }
           ], 
           "inputBehavior": "DEFAULT", 
-          "inputSpeed": 400,
+          "inputSpeed": 0,
           "inputCapacity": 3,
           "processingBehavior": "DEFAULT",
           "processingSpeed": 1500,
           "outputBehavior": "DEFAULT",
-          "outputSpeed": 400,
+          "outputSpeed": 0,
           "outputCapacity": 1,
           "outputLanes": 1,
           "beltCapacity": 2
@@ -68,12 +68,12 @@
             }
           ], 
           "inputBehavior": "DEFAULT", 
-          "inputSpeed": 400,
+          "inputSpeed": 0,
           "inputCapacity": 3,
           "processingBehavior": "DEFAULT",
           "processingSpeed": 1500,
           "outputBehavior": "DEFAULT",
-          "outputSpeed": 400,
+          "outputSpeed": 0,
           "outputCapacity": 1,
           "outputLanes": 1,
           "beltCapacity": 2
@@ -96,12 +96,12 @@
             }
           ], 
           "inputBehavior": "DEFAULT", 
-          "inputSpeed": 500,
+          "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
           "processingSpeed": 750,
           "outputBehavior": "CONSUMER",
-          "outputSpeed": 500,
+          "outputSpeed": 0,
           "outputCapacity": 1,
           "outputLanes": 1,
           "beltCapacity": 999
