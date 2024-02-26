@@ -131,32 +131,39 @@ impl Machine
 
     pub fn update(&mut self, deltaTime: u128, seed: i32, machines: &mut HashMap<usize, Machine>/*, input: &mut Belt, output: &mut Belt*/)
     {
-        // Execute input
-        // Input needs to manage: 
-        //     inputInProgress
-        //     inputWaiting
-        //     inputClock
-        if self.inputBehavior.is_none()
+        if self.state != OPCState::FAULTED
         {
-            println!("ID {}: Input behavior is not defined.", self.id);
-            self.faultMessage = format!("Simulation Error: input behavior not defined.");
-            return;
-        }
-        let inputBehavior = self.inputBehavior.unwrap();
-        inputBehavior(self, deltaTime, machines);
+            // Execute input
+            // Input needs to manage: 
+            //     inputInProgress
+            //     inputWaiting
+            //     inputClock
+            if self.inputBehavior.is_none()
+            {
+                println!("ID {}: Input behavior is not defined.", self.id);
+                self.faultMessage = format!("Simulation Error: input behavior not defined.");
+                return;
+            }
+            let inputBehavior = self.inputBehavior.unwrap();
+            inputBehavior(self, deltaTime, machines);
         
-        // Execute processing 
-        // Processing needs to manage:
-        //     processingInProgress
-        //     processingClock
-        if self.processingBehavior.is_none()
-        {
-            println!("ID {}: Processing behavior is not defined.", self.id);
-            self.faultMessage = format!("Simulation Error: processing behavior not defined.");
-            return;
+            // Execute processing 
+            // Processing needs to manage:
+            //     processingInProgress
+            //     processingClock
+            if self.processingBehavior.is_none()
+            {
+                println!("ID {}: Processing behavior is not defined.", self.id);
+                self.faultMessage = format!("Simulation Error: processing behavior not defined.");
+                return;
+            }
+            let processingBehavior = self.processingBehavior.unwrap();
+            processingBehavior(self, deltaTime, seed);
         }
-        let processingBehavior = self.processingBehavior.unwrap();
-        processingBehavior(self, deltaTime, seed);
+        else
+        {
+            self.faulted();
+        }
 
         // Execute output
         // Output needs to manage:
@@ -176,7 +183,25 @@ impl Machine
     // Function for faulted state
     fn faulted(&mut self)
     {
-        println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
+        // println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
+        // TODO: unfaulting
+    }
+
+    fn checkIfShouldFault(&mut self, seed: i32) -> bool
+    {
+        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
+        if (seed % 1000) as f32 / 1000.0 < self.faultChance
+        {
+            // Debug logging to show the seed when the machine faults
+            println!("ID {}: {}", self.id, self.faultMessage); // TODO: more than one fault type
+            self.state = OPCState::FAULTED;
+            self.stateChangeCount += 1;
+            self.processingInProgress = false;
+            self.inputInProgress = false;
+            return true;
+        }
+
+        return false;
     }
 
     fn findInputSingle(&mut self, machines: &mut HashMap<usize, Machine>) -> bool
@@ -381,6 +406,8 @@ impl Machine
             return false;
         }
 
+        if self.checkIfShouldFault(seed) { return false; }
+        
         // process 
         self.inputInventory -= self.cost;
         self.consumedCount += self.cost;
@@ -395,16 +422,6 @@ impl Machine
         }
         else {
             println!("ID {}: Produced.", self.id);
-        }
-
-        // TODO: fixable when auto recovery time added
-        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
-        if (seed % 1000) as f32 / 1000.0 < self.faultChance
-        {
-            // Debug logging to show the seed when the machine faults
-            println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.faultChance);
-            self.state = OPCState::FAULTED;
-            self.stateChangeCount += 1;
         }
 
         self.processingInProgress = false;
@@ -439,6 +456,8 @@ impl Machine
             return false;
         }
         
+        if self.checkIfShouldFault(seed) { return false; }
+
         // process 
         self.inputInventory -= self.cost;
         self.consumedCount += self.cost;
@@ -453,16 +472,6 @@ impl Machine
         }
         else {
             println!("ID {}: Produced.", self.id);
-        }
-
-        // TODO: fixable when auto recovery time added
-        // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
-        if (seed % 1000) as f32 / 1000.0 < self.faultChance
-        {
-            // Debug logging to show the seed when the machine faults
-            println!("ID {}: {} {} {}", self.id, seed, seed % 1000, self.faultChance);
-            self.state = OPCState::FAULTED;
-            self.stateChangeCount += 1;
         }
 
         return true;
