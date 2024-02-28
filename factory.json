@@ -4,14 +4,14 @@
     "description": "A simple manufacturing line for product assembly",
     "simSpeed": 1.0,
     "pollRate": 100,
-    "Runtime": 100,
+    "Runtime": 60,
     "Machines": [
       {
           "id": 0,
           "cost": 1,
-          "throughput": 12,
+          "throughput": 120,
           "state": "PRODUCING",
-          "faultChance": 0.25,
+          "faultChance": 0.0,
           "faultMessage": "Machine exploded.",
           "inputIDs": [
             {
@@ -25,10 +25,10 @@
           "processingBehavior": "DEFAULT",
           "processingSpeed": 3000,
           "outputBehavior": "DEFAULT",
-          "outputSpeed": 50,
-          "outputCapacity": 12,
-          "outputLanes": 2,
-          "beltCapacity": 10
+          "outputSpeed": 0,
+          "outputCapacity": 120,
+          "outputLanes": 3,
+          "beltCapacity": 120
         },
         {
           "id": 1,

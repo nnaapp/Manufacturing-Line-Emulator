@@ -14,7 +14,8 @@ use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::env;
+use std::cell::RefCell;
+use std::cell::RefMut;
 
 extern crate rand;
 use rand::Rng;
@@ -25,25 +26,24 @@ use opcua::server::prelude::*;
 fn main() -> std::io::Result<()>
 {
     // Debug backtrace info
-    env::set_var("RUST_BACKTRACE", "1");
+    // env::set_var("RUST_BACKTRACE", "1");
 
     // Tuple of HashMap<usize, Machine> and Vec<usize>
     let factoryData = factorySetup();
     // HashMap<usize, Machine>, associated machine ID with the relevant machine data
-    let mut machines = factoryData.0;
-    // Vec<usize>, tracks every valid ID, allows us to always get a valid hashmap entry
-    let ids = factoryData.1;
+    let mut machineLine = 
+        MachineLine { machines: factoryData.0, ids: factoryData.1 };
     //Simulation speed
     let simSpeed: f64 = factoryData.2;
     // Server poll rate in milliseconds
     let pollRate = factoryData.3;
     let mut pollDeltaTime = 0; // time passed since last poll 
 
-    let runtime = factoryData.4 * 1000;  // milliseconds needed to pass to stop
+    let runtime = factoryData.4;  // milliseconds needed to pass to stop
     let mut timePassed: u128 = 0; // milliseconds passed 
 
     // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
-    let serverData = serverSetup(machines.values().cloned().collect(), "MyLine");
+    let serverData = serverSetup(machineLine.machines.clone(), "MyLine");
     let server = serverData.0;
     let addressSpace = server.address_space();
     let nodeIDs = serverData.1;
@@ -63,23 +63,26 @@ fn main() -> std::io::Result<()>
     let mut prevTime:Duration = iterTime;
     let mut deltaTime:u128;
 
+    let mut dtPeak: u128 = 0;
+    let mut dtSum: u128 = 0;
+    let mut dtAmount: u128 = 0;
+
     while timePassed < runtime
     {   
         // Find deltatime between loop iterations
         start = SystemTime::now();
         iterTime = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");     
-        deltaTime = iterTime.as_millis() - prevTime.as_millis();
+        deltaTime = iterTime.as_micros() - prevTime.as_micros();
+
+        if deltaTime > dtPeak { dtPeak = deltaTime; }
+        dtSum += deltaTime;
+        dtAmount += 1;
+        
         timePassed += deltaTime;
-        deltaTime = ((iterTime.as_millis() as f64 * simSpeed) as u128) - (((prevTime.as_millis() as f64) * simSpeed) as u128);
+        deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operationsu
-        for id in ids.iter()
-        {
-            // TODO: Consider multiple passes over machines with some logic, in the case of extremely fast machines or extremely high sim speed
-            let mut machineCopy = machines.get(&id).unwrap().clone();
-            machineCopy.update(deltaTime, rng.gen_range(0..=std::i32::MAX), &mut machines);
-            machines.insert(*id, machineCopy);
-        }
+        machineLine.update(deltaTime, rng.gen_range(0..=std::i32::MAX));
 
         // Check if the server should poll for updates
         pollDeltaTime += deltaTime;
@@ -87,22 +90,25 @@ fn main() -> std::io::Result<()>
         {
             pollDeltaTime -= pollRate;
             let mut addressSpace = addressSpace.write();
-            serverPoll(&mut addressSpace, &machines, &nodeIDs, &ids);
+            serverPoll(&mut addressSpace, &machineLine.machines, &nodeIDs, &machineLine.ids);
         }
 
         // Log system time at the start of this iteration, for use in next iteration
         prevTime = iterTime;
     }
     let file = File::create("log.txt")?;
-    for id in ids.iter()
+    writeln!(&file, "Avg Cycle Time: {}", dtSum / dtAmount)?;
+    writeln!(&file, "Peak Cycle Time: {}", dtPeak)?;
+    writeln!(&file, "")?;
+    for id in machineLine.ids.iter()
     {
-        let machine = machines.get(id).unwrap();
+        let machine = machineLine.machines.get(id).expect("Machine ceased to exist.").borrow();
         let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processingTickSpeed as f64));
 
-        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").id)?;
-        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").consumedCount)?;
-        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").producedCount)?;
-        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").stateChangeCount)?;
+        writeln!(&file, "Machine ID: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().id)?;
+        writeln!(&file, "Machine Input: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
+        writeln!(&file, "Machine Output: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
+        writeln!(&file, "State Changes: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
         writeln!(&file, "Efficiency: {}", efficiencyCount)?;
         writeln!(&file, "")?;
 
@@ -111,7 +117,7 @@ fn main() -> std::io::Result<()>
 }
 
 
-fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
+fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u128)
 {
     let file_path = "factory.json";
     let json_data = read_json_file(file_path);
@@ -126,10 +132,10 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 
-    let factoryPollRate = data.factory.pollRate;
-    let factoryRuntime = data.factory.Runtime;
+    let factoryPollRate = data.factory.pollRate * 1000; // milliseconds to microseconds
+    let factoryRuntime = data.factory.Runtime * 1000 * 1000; // seconds to microseconds
 
-    let mut machines = HashMap::<usize, Machine>::new();
+    let mut machines = HashMap::<usize, RefCell<Machine>>::new();
     let mut ids = Vec::<usize>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
 
     for machine in data.factory.Machines 
@@ -152,37 +158,38 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
             state,
             machine.faultChance,
             machine.faultMessage,
-            machine.processingSpeed,
-            machine.inputSpeed,
+            machine.processingSpeed * 1000, // milliseconds to microseconds
+            machine.inputSpeed * 1000, // milliseconds to microseconds
             machine.inputIDs.len(),
             machine.inputCapacity,
-            machine.outputSpeed,
+            machine.outputSpeed * 1000, // milliseconds to microseconds
             machine.outputCapacity,
             machine.outputLanes,
-            machine.beltCapacity
+            machine.beltCapacity,
+            25 * 1000 // milliseconds to microseconds
         );
         newMachine.inputIDs = machine.inputIDs;
 
-        let mut inputBehavior: fn(&mut Machine, u128, &mut HashMap<usize, Machine>) -> bool = Machine::singleInput;
-        let mut processingBehavior: fn(&mut Machine, u128, i32) -> bool = Machine::defaultProcessing;
-        let mut outputBehavior: fn(&mut Machine, u128) -> bool = Machine::singleOutput;
+        let mut inputBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool = MachineLine::singleInput;
+        let mut processingBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128, i32) -> bool = MachineLine::defaultProcessing;
+        let mut outputBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool = MachineLine::singleOutput;
         match machine.inputBehavior.to_lowercase().as_str()
         {
-            "spawner" => inputBehavior = Machine::spawnerInput,
-            "single" => inputBehavior = Machine::singleInput,
-            "flow" => inputBehavior = Machine::flowInput,
+            "spawner" => inputBehavior = MachineLine::spawnerInput,
+            "single" => inputBehavior = MachineLine::singleInput,
+            // "flow" => inputBehavior = Machine::flowInput,
             _ => (),
         }
         match machine.processingBehavior.to_lowercase().as_str()
         {
-            "default" => processingBehavior = Machine::defaultProcessing,
-            "flow" => processingBehavior = Machine::flowProcessing,
+            "default" => processingBehavior = MachineLine::defaultProcessing,
+            // "flow" => processingBehavior = Machine::flowProcessing,
             _ => (),
         }
         match machine.outputBehavior.to_lowercase().as_str()
         {
-            "consumer" => outputBehavior = Machine::consumerOutput,
-            "default" => outputBehavior = Machine::singleOutput,
+            "consumer" => outputBehavior = MachineLine::consumerOutput,
+            "default" => outputBehavior = MachineLine::singleOutput,
             _ => (),
         }
 
@@ -191,16 +198,22 @@ fn factorySetup() -> (HashMap<usize, Machine>, Vec<usize>, f64, u128, u128)
         newMachine.outputBehavior = Some(outputBehavior);
 
         ids.push(machine.id);
-        machines.insert(machine.id, newMachine);
+        machines.insert(machine.id, RefCell::new(newMachine));
     }
 
     return (machines, ids, factorySpeed, factoryPollRate, factoryRuntime);
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
-fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<String, NodeId>)
+fn serverSetup(machinesHashMap: HashMap<usize, RefCell<Machine>>, lineName: &str) -> (Server, HashMap<String, NodeId>)
 {
-    // let server = Server::new(ServerConfig::load(&PathBuf::from("./server.conf")).unwrap());
+    let machinesHashMap = machinesHashMap.values();
+    let mut machines = Vec::<Machine>::new();
+    for machine in machinesHashMap
+    {
+        machines.push(machine.borrow().clone());
+    }
+    
     let server = initServer();
 
     let ns = {
@@ -282,12 +295,12 @@ fn serverSetup(machines: Vec<Machine>, lineName: &str) -> (Server, HashMap<Strin
 }
 
 // Handles updating the values of each machine on the OPC server
-fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, Machine>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
+fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
 {
     let now = DateTime::now();
     for id in ids.iter()
     {
-        let machine = machines.get(&id).expect("Machine ceased to exist.");
+        let machine = machines.get(&id).expect("Machine ceased to exist.").borrow();
         let machineID = machine.id.to_string();
 
         let stateNodeID = nodeIDs.get(&format!("{machineID}-state")).expect("NodeId ceased to exist.");
