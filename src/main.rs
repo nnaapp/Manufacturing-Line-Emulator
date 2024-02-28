@@ -23,10 +23,16 @@ use rand::Rng;
 extern crate opcua;
 use opcua::server::prelude::*;
 
+extern crate log2;
+use log2::*;
+
 fn main() -> std::io::Result<()>
 {
     // Debug backtrace info
     // env::set_var("RUST_BACKTRACE", "1");
+
+    // function for testing log2's features
+    log2Test();
 
     // Tuple of HashMap<usize, Machine> and Vec<usize>
     let factoryData = factorySetup();
@@ -116,6 +122,17 @@ fn main() -> std::io::Result<()>
     Ok(())
 }
 
+fn log2Test()
+{
+    // Start log2
+    let _log2 = log2::start();
+
+    trace!("Trace Test");
+    debug!("Debug Test");
+    info!("Info Test");
+    warn!("Warn Test");
+    error!("Error Test");
+}
 
 fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u128)
 {
