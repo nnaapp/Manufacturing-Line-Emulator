@@ -7,6 +7,9 @@ extern crate serde_json;
 extern crate serde;
 use self::serde::Deserialize;
 
+extern crate log2;
+use log2::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OPCState
 {
