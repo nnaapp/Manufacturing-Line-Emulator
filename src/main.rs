@@ -140,12 +140,12 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
     let json_data = read_json_file(file_path);
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
-    println!("Factory Name: {}", data.factory.name);
-    println!("Description: {}", data.factory.description);
-    println!("simSpeed: {} ", data.factory.simSpeed);
-    println!("pollRate: {} milliseconds", data.factory.pollRate);
-    println!("Runtime: {} seconds", data.factory.Runtime);
-    println!("");
+    info!("Factory Name: {}", data.factory.name);
+    info!("Description: {}", data.factory.description);
+    info!("simSpeed: {} ", data.factory.simSpeed);
+    info!("pollRate: {} milliseconds", data.factory.pollRate);
+    info!("Runtime: {} seconds", data.factory.Runtime);
+    info!("");
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 

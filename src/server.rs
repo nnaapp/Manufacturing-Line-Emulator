@@ -11,7 +11,7 @@ pub fn initServer() -> Server
     let ipAddress = local_ip().expect("IP could not be found.");
     let hostName = hostname().expect("Hostname could not be found.");
     let discoveryURL = format!("opc.tcp://{ipAddress}:4855/");
-    println!("Discovery URL: {}", discoveryURL);
+    info!("Discovery URL: {}", discoveryURL);
 
     let server = ServerBuilder::new()
         .application_name("OPC UA Simulation Server")

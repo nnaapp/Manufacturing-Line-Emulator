@@ -55,7 +55,7 @@ impl MachineLine
                     //     inputClock
                     if machine.inputBehavior.is_none()
                     {
-                        println!("ID {}: Input behavior is not defined.", machine.id);
+                        error!("ID {}: Input behavior is not defined.", machine.id);
                         machine.faultMessage = format!("Simulation Error: input behavior not defined.");
                         return;
                     }
@@ -74,7 +74,7 @@ impl MachineLine
                     //     processingClock
                     if machine.processingBehavior.is_none()
                     {
-                        println!("ID {}: Processing behavior is not defined.", machine.id);
+                        error!("ID {}: Processing behavior is not defined.", machine.id);
                         machine.faultMessage = format!("Simulation Error: processing behavior not defined.");
                         return;
                     }
@@ -101,7 +101,7 @@ impl MachineLine
                 //     outputClock
                 if machine.outputBehavior.is_none()
                 {
-                    println!("ID {}: Output behavior is not defined.", machine.id);
+                    error!("ID {}: Output behavior is not defined.", machine.id);
                     machine.faultMessage = format!("Simulation Error: output behavior not defined.");
                     return;
                 }
@@ -234,7 +234,7 @@ impl MachineLine
                 {
                     machine.state = OPCState::STARVED;
                     machine.stateChangeCount += 1;
-                    println!("ID {}: Starved.", machine.id);
+                    info!("ID {}: Starved.", machine.id);
                 }
                 return false;
             }
@@ -246,7 +246,7 @@ impl MachineLine
                 {
                     machine.state = OPCState::BLOCKED;
                     machine.stateChangeCount += 1;
-                    println!("ID {}: Blocked.", machine.id);
+                    info!("ID {}: Blocked.", machine.id);
                 }
                 return false;
             }
@@ -281,10 +281,10 @@ impl MachineLine
         if machine.state != OPCState::PRODUCING
         {
             machine.state = OPCState::PRODUCING;
-            println!("ID {}: Switched back to producing state and produced.", machine.id);
+            info!("ID {}: Switched back to producing state and produced.", machine.id);
         }
         else {
-            println!("ID {}: Produced.", machine.id);
+            info!("ID {}: Produced.", machine.id);
         }
 
         machine.processingInProgress = false;
@@ -484,7 +484,7 @@ impl Machine
         if (seed % 1000) as f32 / 1000.0 < self.faultChance
         {
             // Debug logging to show the seed when the machine faults
-            println!("ID {}: {}", self.id, self.faultMessage); // TODO: more than one fault type
+            debug!("ID {}: {}", self.id, self.faultMessage); // TODO: more than one fault type
             self.state = OPCState::FAULTED;
             self.stateChangeCount += 1;
             self.processingInProgress = false;
