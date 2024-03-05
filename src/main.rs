@@ -317,6 +317,11 @@ fn serverSetup(machinesHashMap: HashMap<usize, RefCell<Machine>>, lineName: &str
 // Handles updating the values of each machine on the OPC server
 fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
 {
+    //for machine in machines
+    //{
+       //call sensorfunction to be updated with serverPoll 
+    //}
+
     let now = DateTime::now();
     for id in ids.iter()
     {
