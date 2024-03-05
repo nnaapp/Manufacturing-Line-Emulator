@@ -13,6 +13,8 @@
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Machine exploded.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
           "inputIDs": [
             {
               "machineID": 0,
@@ -37,6 +39,8 @@
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
           "inputIDs": [
             {
               "machineID": 0 ,
@@ -61,6 +65,8 @@
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
           "inputIDs": [
             {
               "machineID": 0 ,
@@ -85,6 +91,8 @@
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
           "inputIDs": [
             {
               "machineID": 1,
