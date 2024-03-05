@@ -32,7 +32,8 @@ fn main() -> std::io::Result<()>
     // env::set_var("RUST_BACKTRACE", "1");
 
     // function for testing log2's features
-    log2Test();
+    let _log2 = log2::start();
+    // log2Test();
 
     // Tuple of HashMap<usize, Machine> and Vec<usize>
     let factoryData = factorySetup();
