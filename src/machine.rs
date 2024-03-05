@@ -383,6 +383,8 @@ pub struct Machine
     pub state: OPCState,
     pub faultChance: f32,
     pub faultMessage: String, //string for fault messages 
+    pub faultTimeHigh: f32,
+    pub faultTimeLow: f32,
 
     pub processingBehavior: Option<fn(&MachineLine, &mut RefMut<Machine>, u128, i32) -> bool>, 
     pub processingClock: u128, // deltaTime is in milliseconds
@@ -420,8 +422,8 @@ pub struct Machine
 }
 impl Machine
 {
-    pub fn new(id: usize, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String,
-            processingTickSpeed: u128, inputTickSpeed: u128, inputLanes: usize, inputInvCapacity: usize,
+    pub fn new(id: usize, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String, faultTimeHigh: f32, 
+            faultTimeLow: f32, processingTickSpeed: u128, inputTickSpeed: u128, inputLanes: usize, inputInvCapacity: usize,
             outputTickSpeed: u128, outputInvCapacity: usize, outputLanes: usize, beltCapacity: usize, beltTickSpeed: u128) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
@@ -435,6 +437,8 @@ impl Machine
             state,
             faultChance,
             faultMessage,
+            faultTimeHigh,
+            faultTimeLow,
 
             processingBehavior: None,
             processingClock: 0,
