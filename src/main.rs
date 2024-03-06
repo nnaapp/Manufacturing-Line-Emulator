@@ -35,22 +35,29 @@ fn main() -> std::io::Result<()>
     let _log2 = log2::start();
     // log2Test();
 
-    // Tuple of HashMap<usize, Machine> and Vec<usize>
+    // Tuple of line data structures and settings
     let factoryData = factorySetup();
-    // HashMap<usize, Machine>, associated machine ID with the relevant machine data
-    let mut machineLine = 
-        MachineLine { machines: factoryData.0, ids: factoryData.1 };
+
+    // HashMap<String, RefCell<Machine>> containing all machines
+    let mut machines = factoryData.0;
+    // Immutable reference vector containing every machine ID
+    let machineIDs = factoryData.1;
+    // HashMap<String, RefCell<ConveyorBelt>> containing all conveyors
+    let mut conveyors = factoryData.2;
+    // Immutable reference vector containing every conveyor ID
+    let conveyorIDs = factoryData.3;
+
     //Simulation speed
-    let simSpeed: f64 = factoryData.2;
+    let simSpeed: f64 = factoryData.4;
     // Server poll rate in milliseconds
-    let pollRate = factoryData.3;
+    let pollRate = factoryData.5;
     let mut pollDeltaTime = 0; // time passed since last poll 
 
-    let runtime = factoryData.4;  // milliseconds needed to pass to stop
+    let runtime = factoryData.6;  // milliseconds needed to pass to stop
     let mut timePassed: u128 = 0; // milliseconds passed 
 
     // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
-    let serverData = serverSetup(machineLine.machines.clone(), "MyLine");
+    let serverData = serverSetup(machines.clone(), "MyLine");
     let server = serverData.0;
     let addressSpace = server.address_space();
     let nodeIDs = serverData.1;
@@ -66,7 +73,7 @@ fn main() -> std::io::Result<()>
     // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
     // deltaTime represents milliseconds time between previous and current iteration of loop.
     let mut start = SystemTime::now();
-    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");
+    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");
     let mut prevTime:Duration = iterTime;
     let mut deltaTime:u128;
 
@@ -78,7 +85,7 @@ fn main() -> std::io::Result<()>
     {   
         // Find deltatime between loop iterations
         start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Get epoch time in ms");     
+        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");     
         deltaTime = iterTime.as_micros() - prevTime.as_micros();
 
         if deltaTime > dtPeak { dtPeak = deltaTime; }
@@ -88,8 +95,32 @@ fn main() -> std::io::Result<()>
         timePassed += deltaTime;
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
-        // rng is used to seed the update with any random integer, which is used for any rng dependent operationsu
-        machineLine.update(deltaTime, rng.gen_range(0..=std::i32::MAX));
+        // rng is used to seed the update with any random integer, which is used for any rng dependent operations
+        // update all machines
+        for id in machineIDs.iter()
+        {
+            machines.get_mut(id)
+                    .expect(format!("Machine {id} does not exist.").as_str())
+                    .borrow_mut()
+                    .update(&mut conveyors, deltaTime, rng.gen_range(0..=std::i32::MAX));
+        }
+        // update all conveyor belts
+        for id in conveyorIDs.iter()
+        {
+            // Get reference to current conveyor
+            let mut conveyor = conveyors.get(id).expect(format!("Conveyor {id} does not exist.").as_str()).borrow_mut();
+            // Initialize input conveyor to None by default, as most belts will NOT take input from other belts
+            let mut inputConveyor: Option<RefMut<ConveyorBelt>> = None;
+            // If the current conveyor has some value for inputID (conveyor to take from),
+            // get that conveyor as a reference and make it an option
+            if conveyor.isInputIDSome
+            {
+                let inputID = conveyor.inputID.as_ref().unwrap();
+                inputConveyor = Some(conveyors.get(inputID).expect(format!("Conveyor {inputID} does not exist.").as_str()).borrow_mut());
+            }
+            conveyor.update(inputConveyor, deltaTime);
+        }
+
 
         // Check if the server should poll for updates
         pollDeltaTime += deltaTime;
@@ -97,7 +128,7 @@ fn main() -> std::io::Result<()>
         {
             pollDeltaTime -= pollRate;
             let mut addressSpace = addressSpace.write();
-            serverPoll(&mut addressSpace, &machineLine.machines, &nodeIDs, &machineLine.ids);
+            serverPoll(&mut addressSpace, &machines, &nodeIDs, &machineIDs);
         }
 
         // Log system time at the start of this iteration, for use in next iteration
@@ -107,15 +138,15 @@ fn main() -> std::io::Result<()>
     writeln!(&file, "Avg Cycle Time: {}", dtSum / dtAmount)?;
     writeln!(&file, "Peak Cycle Time: {}", dtPeak)?;
     writeln!(&file, "")?;
-    for id in machineLine.ids.iter()
+    for id in machineIDs.iter()
     {
-        let machine = machineLine.machines.get(id).expect("Machine ceased to exist.").borrow();
+        let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
         let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processingTickSpeed as f64));
 
-        writeln!(&file, "Machine ID: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().id)?;
-        writeln!(&file, "Machine Input: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
-        writeln!(&file, "Machine Output: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
-        writeln!(&file, "State Changes: {}", machineLine.machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
+        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").borrow().id)?;
+        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
+        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
+        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
         writeln!(&file, "Efficiency: {}", efficiencyCount)?;
         writeln!(&file, "")?;
 
@@ -123,19 +154,20 @@ fn main() -> std::io::Result<()>
     Ok(())
 }
 
-fn log2Test()
-{
-    // Start log2
-    let _log2 = log2::start();
+// fn log2Test()
+// {
+//     // Start log2
+//     let _log2 = log2::start();
 
-    trace!("Trace Test");
-    debug!("Debug Test");
-    info!("Info Test");
-    warn!("Warn Test");
-    error!("Error Test");
-}
+//     trace!("Trace Test");
+//     debug!("Debug Test");
+//     info!("Info Test");
+//     warn!("Warn Test");
+//     error!("Error Test");
+// }
 
-fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u128)
+fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>, 
+                        HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)
 {
     let file_path = "factory.json";
     let json_data = read_json_file(file_path);
@@ -153,8 +185,10 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
     let factoryPollRate = data.factory.pollRate * 1000; // milliseconds to microseconds
     let factoryRuntime = data.factory.Runtime * 1000 * 1000; // seconds to microseconds
 
-    let mut machines = HashMap::<usize, RefCell<Machine>>::new();
-    let mut ids = Vec::<usize>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
+    let mut machines = HashMap::<String, RefCell<Machine>>::new();
+    let mut conveyors = HashMap::<String, RefCell<ConveyorBelt>>::new();
+    let mut machineIDs = Vec::<String>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
+    let mut conveyorIDs = Vec::<String>::new();
 
     for machine in data.factory.Machines 
     {
@@ -169,8 +203,9 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
             _ => (),
         }
         
+        let id = String::from(machine.id);
         let mut newMachine = Machine::new(
-            machine.id,
+            id.clone(),
             machine.cost,
             machine.throughput,
             state,
@@ -178,36 +213,33 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
             machine.faultMessage,
             machine.processingSpeed * 1000, // milliseconds to microseconds
             machine.inputSpeed * 1000, // milliseconds to microseconds
-            machine.inputIDs.len(),
             machine.inputCapacity,
             machine.outputSpeed * 1000, // milliseconds to microseconds
-            machine.outputCapacity,
-            machine.outputLanes,
-            machine.beltCapacity,
-            25 * 1000 // milliseconds to microseconds
+            machine.outputCapacity
         );
         newMachine.inputIDs = machine.inputIDs;
+        newMachine.outputIDs = machine.outputIDs;
 
-        let mut inputBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool = MachineLine::singleInput;
-        let mut processingBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128, i32) -> bool = MachineLine::defaultProcessing;
-        let mut outputBehavior: fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool = MachineLine::singleOutput;
+        let mut inputBehavior: fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool = Machine::singleInput;
+        let mut processingBehavior: fn(&mut Machine, u128, i32) -> bool = Machine::defaultProcessing;
+        let mut outputBehavior: fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool = Machine::singleOutput;
         match machine.inputBehavior.to_lowercase().as_str()
         {
-            "spawner" => inputBehavior = MachineLine::spawnerInput,
-            "single" => inputBehavior = MachineLine::singleInput,
+            "spawner" => inputBehavior = Machine::spawnerInput,
+            "single" => inputBehavior = Machine::singleInput,
             // "flow" => inputBehavior = Machine::flowInput,
             _ => (),
         }
         match machine.processingBehavior.to_lowercase().as_str()
         {
-            "default" => processingBehavior = MachineLine::defaultProcessing,
+            "default" => processingBehavior = Machine::defaultProcessing,
             // "flow" => processingBehavior = Machine::flowProcessing,
             _ => (),
         }
         match machine.outputBehavior.to_lowercase().as_str()
         {
-            "consumer" => outputBehavior = MachineLine::consumerOutput,
-            "default" => outputBehavior = MachineLine::singleOutput,
+            "consumer" => outputBehavior = Machine::consumerOutput,
+            "default" => outputBehavior = Machine::singleOutput,
             _ => (),
         }
 
@@ -215,15 +247,22 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
         newMachine.processingBehavior = Some(processingBehavior);
         newMachine.outputBehavior = Some(outputBehavior);
 
-        ids.push(machine.id);
-        machines.insert(machine.id, RefCell::new(newMachine));
+        machineIDs.push(id.clone());
+        machines.insert(id.clone(), RefCell::new(newMachine));
     }
 
-    return (machines, ids, factorySpeed, factoryPollRate, factoryRuntime);
+    for conveyor in data.factory.Conveyors
+    {
+        let id = String::from(conveyor.id);
+        conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeed, conveyor.inputID)));
+        conveyorIDs.push(id.clone());
+    }
+
+    return (machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRate, factoryRuntime);
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
-fn serverSetup(machinesHashMap: HashMap<usize, RefCell<Machine>>, lineName: &str) -> (Server, HashMap<String, NodeId>)
+fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &str) -> (Server, HashMap<String, NodeId>)
 {
     let machinesHashMap = machinesHashMap.values();
     let mut machines = Vec::<Machine>::new();
@@ -313,12 +352,12 @@ fn serverSetup(machinesHashMap: HashMap<usize, RefCell<Machine>>, lineName: &str
 }
 
 // Handles updating the values of each machine on the OPC server
-fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
+fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<String>)
 {
     let now = DateTime::now();
     for id in ids.iter()
     {
-        let machine = machines.get(&id).expect("Machine ceased to exist.").borrow();
+        let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
         let machineID = machine.id.to_string();
 
         let stateNodeID = nodeIDs.get(&format!("{machineID}-state")).expect("NodeId ceased to exist.");
