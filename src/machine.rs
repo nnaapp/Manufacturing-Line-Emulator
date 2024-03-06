@@ -156,11 +156,14 @@ pub struct Machine
     pub state: OPCState,
     pub faultChance: f32,
     pub faultMessage: String, //string for fault messages 
+    pub faultTimeHigh: f32,
+    pub faultTimeLow: f32,
 
     pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
     pub processingClock: u128, // deltaTime is in milliseconds
     pub processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     pub processingInProgress: bool,
+    
 
     pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
     pub inputClock: u128,
@@ -188,8 +191,49 @@ pub struct Machine
 }
 impl Machine
 {
+    //pub fn sensorSim(baseline: f64, variance: f64) -> f64
+    //{
+    //    let time = deltaTime;
+        //is essentially the variance, dictates the lower and upper bounds the readings can go
+    //    let amplitude = variance; 
+        //adjust frequency as desired (100 is default, making it 50 would double the speed)
+    //    let angFrequency = 2.0 * 3.14 / 25.0; 
+        //causes the starting temp to be the lower bounds 
+    //    let timeOffSet = -3.14 / 2.0;  
+        //produces a sinusoidal waveform centered on baseline
+    //    let flux = amplitude * (angFrequency * time + timeOffSet).sin(); 
+        //Add fluctuation to baseline* to get the current sens reading
+    //    let sensNum = baseline + flux;
+
+        
+    //Track initial and make it start at time of 0
+    //    let initialSensNum = sensorSim(baseline, variance, 0.0);
+    //    let mut sensNum = initialSensNum;
+
+        //TODO: move from this iterative loop and implement this logic with the new clock system / tick system
+    //    for time_step in time
+    //    {
+    //        let time_float = time_step as f64;
+    //        let newSensNum = sensorSim(baseline, variance, time_float);
+            //Make sure we are within bounds and reading changes by whole numbers
+    //        if newSensNum >= baseline - variance && newSensNum <= baseline + variance 
+    //        {
+    //           sensNum = newSensNum.round();
+    //        } 
+    //        else
+    //        {
+    //            let change = rng.gen_range(-2.0..=2.0); //Random whole number change between -2 and 2
+    //            sensNum += change;
+    //            sensNum = sensNum.max(baseline - variance).min(baseline + variance);
+    //        }
+            //println!("Time: {}, Temperature: {}", time_step, sensNum);
+    //    }
+            
+    //    return sensNum;             
+    //}
+
     pub fn new(id: String, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String,
-            processingTickSpeed: u128, inputTickSpeed: u128, inputInvCapacity: usize,
+            faultTimeHigh: f32, faultTimeLow: f32, processingTickSpeed: u128, inputTickSpeed: u128, inputInvCapacity: usize,
             outputTickSpeed: u128, outputInvCapacity: usize) -> Self
     {
         let inIDs = Vec::<String>::new();
@@ -202,6 +246,8 @@ impl Machine
             state,
             faultChance,
             faultMessage,
+            faultTimeHigh,
+            faultTimeLow,
 
             processingBehavior: None,
             processingClock: 0,
@@ -230,7 +276,7 @@ impl Machine
             
             consumedCount: 0,
             producedCount: 0,
-            stateChangeCount: 0,
+            stateChangeCount: 0
         };
 
         return newMachine;

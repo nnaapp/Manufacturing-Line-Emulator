@@ -28,7 +28,10 @@
           ],
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
-          "outputCapacity": 12
+          "outputCapacity": 12,
+          "sensor": true,
+          "baseline": 325.0, 
+          "variance": 7.0
         },
         {
           "id": "machine-1",
@@ -76,7 +79,8 @@
           ],
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
-          "outputCapacity": 1
+          "outputCapacity": 1,
+          "sensor":false
         },
         {
           "id": "machine-3",
@@ -100,7 +104,8 @@
           "outputIDs": [
           ],
           "outputSpeed": 0,
-          "outputCapacity": 1
+          "outputCapacity": 1,
+          "sensor":false
         }
     ],
     "Conveyors": [
@@ -112,8 +117,8 @@
       },
       {
         "id": "MiddleBelt-to1",
-        "capacity": 10,
-        "beltSpeed": 1,
+        "capacity": 60,
+        "beltSpeed": 25,
         "inputID": "belt-0toMiddleBelt"
       },
       {

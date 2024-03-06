@@ -14,6 +14,8 @@ pub struct JSONMachine {
     pub state: String,
     pub faultChance: f32,
     pub faultMessage: String,
+    pub faultTimeHigh: f32,
+    pub faultTimeLow: f32,
     pub inputIDs: Vec<String>,
     pub inputBehavior: String,
     pub inputSpeed: u128, // ms
@@ -24,6 +26,9 @@ pub struct JSONMachine {
     pub outputBehavior: String,
     pub outputSpeed: u128,
     pub outputCapacity: usize,
+    //pub sensor: bool,
+    //pub baseline: f64, 
+    //pub variance: f64    
 }
 
 #[derive(Clone, Debug, Deserialize)]

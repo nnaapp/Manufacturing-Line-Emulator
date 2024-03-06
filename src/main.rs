@@ -211,6 +211,8 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
             state,
             machine.faultChance,
             machine.faultMessage,
+            machine.faultTimeHigh,
+            machine.faultTimeLow,
             machine.processingSpeed * 1000, // milliseconds to microseconds
             machine.inputSpeed * 1000, // milliseconds to microseconds
             machine.inputCapacity,
@@ -254,7 +256,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
     for conveyor in data.factory.Conveyors
     {
         let id = String::from(conveyor.id);
-        conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeed, conveyor.inputID)));
+        conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeed * 1000, conveyor.inputID)));
         conveyorIDs.push(id.clone());
     }
 
@@ -354,6 +356,11 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
 // Handles updating the values of each machine on the OPC server
 fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<String>)
 {
+    //for machine in machines
+    //{
+       //call sensorfunction to be updated with serverPoll 
+    //}
+
     let now = DateTime::now();
     for id in ids.iter()
     {
