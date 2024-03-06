@@ -9,7 +9,7 @@
       {
           "id": "machine-0",
           "cost": 1,
-          "throughput": 12,
+          "throughput": 1,
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Machine exploded.",
@@ -21,21 +21,21 @@
           "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 3000,
+          "processingSpeed": 1000,
           "outputIDs": [
             "belt-0toMiddleBelt",
             "belt-0to2"
           ],
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
-          "outputCapacity": 12,
+          "outputCapacity": 1,
           "sensor": true,
           "baseline": 325.0, 
           "variance": 7.0
         },
         {
           "id": "machine-1",
-          "cost": 2,
+          "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
           "faultChance": 0.0,
@@ -47,9 +47,9 @@
           ], 
           "inputBehavior": "DEFAULT", 
           "inputSpeed": 0,
-          "inputCapacity": 2,
+          "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 1500,
+          "processingSpeed": 2000,
           "outputIDs": [
             "belt-1to3"
           ],
@@ -59,7 +59,7 @@
         },
         {
           "id": "machine-2",
-          "cost": 2,
+          "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
           "faultChance": 0.0,
@@ -71,9 +71,9 @@
           ], 
           "inputBehavior": "DEFAULT", 
           "inputSpeed": 0,
-          "inputCapacity": 2,
+          "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 1500,
+          "processingSpeed": 2000,
           "outputIDs": [
             "belt-2to3"
           ],
@@ -99,7 +99,7 @@
           "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 750,
+          "processingSpeed": 1000,
           "outputBehavior": "CONSUMER",
           "outputIDs": [
           ],
@@ -111,32 +111,32 @@
     "Conveyors": [
       {
         "id": "belt-0toMiddleBelt",
-        "capacity": 60,
-        "beltSpeed": 50,
+        "capacity": 2,
+        "beltSpeed": 1000,
         "inputID": null
       },
       {
         "id": "MiddleBelt-to1",
-        "capacity": 60,
-        "beltSpeed": 25,
+        "capacity": 3,
+        "beltSpeed": 1000,
         "inputID": "belt-0toMiddleBelt"
       },
       {
         "id": "belt-0to2",
-        "capacity": 120,
-        "beltSpeed": 50,
+        "capacity": 5,
+        "beltSpeed": 1000,
         "inputID": null
       },
       {
         "id": "belt-1to3",
-        "capacity": 2,
-        "beltSpeed": 50,
+        "capacity": 5,
+        "beltSpeed": 1000,
         "inputID": null
       },
       {
         "id": "belt-2to3",
-        "capacity": 2,
-        "beltSpeed": 50,
+        "capacity": 5,
+        "beltSpeed": 1000,
         "inputID": null
       }
     ]
