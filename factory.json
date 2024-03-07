@@ -13,7 +13,7 @@
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Machine exploded.",
-          "faultTimeHigh": 10.0,
+          "faultTimeHigh": 20.0,
           "faultTimeLow": 1.0,
           "inputIDs": [
           ], 
@@ -38,7 +38,7 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.0,
+          "faultChance": 0.5,
           "faultMessage": "Default Fault Code.",
           "faultTimeHigh": 10.0,
           "faultTimeLow": 1.0,

@@ -211,8 +211,8 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
             state,
             machine.faultChance,
             machine.faultMessage,
-            machine.faultTimeHigh,
-            machine.faultTimeLow,
+            machine.faultTimeHigh * 1000.0 * 1000.0, // seconds to microseconds
+            machine.faultTimeLow * 1000.0 * 1000.0, // seconds to microseconds
             machine.processingSpeed * 1000, // milliseconds to microseconds
             machine.inputSpeed * 1000, // milliseconds to microseconds
             machine.inputCapacity,

@@ -158,6 +158,8 @@ pub struct Machine
     pub faultMessage: String, //string for fault messages 
     pub faultTimeHigh: f32,
     pub faultTimeLow: f32,
+    pub faultTimeCurrent: u128,
+    pub faultClock: u128,
 
     pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
     pub processingClock: u128, // deltaTime is in milliseconds
@@ -248,6 +250,8 @@ impl Machine
             faultMessage,
             faultTimeHigh,
             faultTimeLow,
+            faultTimeCurrent: 0,
+            faultClock: 0,
 
             processingBehavior: None,
             processingClock: 0,
@@ -324,7 +328,7 @@ impl Machine
         {
             if self.state == OPCState::FAULTED
             {
-                self.faulted();
+                self.faulted(deltaTime);
             }
         }
 
@@ -346,10 +350,16 @@ impl Machine
     }
 
     // Function for faulted state
-    fn faulted(&mut self)
+    fn faulted(&mut self, deltaTime: u128)
     {
         // println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
-        // TODO: unfaulting
+        self.faultClock += deltaTime;
+        if self.faultClock < self.faultTimeCurrent 
+        {
+            return;
+        }
+        self.state = OPCState::PRODUCING;
+        info!("ID {} : Has been fixed: Producing Again.", self.id);
     }
 
     fn checkIfShouldFault(&mut self, seed: i32) -> bool
@@ -363,6 +373,9 @@ impl Machine
             self.stateChangeCount += 1;
             self.processingInProgress = false;
             self.inputInProgress = false;
+            let midTimePercent = (seed % 101) as f32 / 100.0; //turn seed into percentage
+            self.faultTimeCurrent = ((self.faultTimeHigh - self.faultTimeLow) * midTimePercent + self.faultTimeLow) as u128; //sets fault time to the a percent of the way between the low and high values.
+            self.faultClock = 0;
             return true;
         }
 
