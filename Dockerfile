@@ -12,7 +12,7 @@ EXPOSE 4855
 COPY Cargo.toml . ./
 
 # Build the Rust app
-RUN cargo build
+RUN cargo build --bin simulator --features build-simulator
 
 # Set the command to run the Rust app
-CMD cargo run
+CMD cargo run --bin simulator --features build-simulator
