@@ -165,12 +165,13 @@ pub struct Machine
     pub processingClock: u128, // deltaTime is in milliseconds
     pub processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     pub processingInProgress: bool,
-    
+    pub processingDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
 
     pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
     pub inputClock: u128,
     pub inputTickSpeed: u128, // tick for pulling input into inputInventory
     pub inputInProgress: bool,
+    pub inputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub inputWaiting: bool, // is there room for input, and input to be taken?
     pub inputIDs: Vec<String>, // Vector of machine/lane IDs for input, used as indices
     pub inputInventory: usize, // storage place in machine before process 
@@ -181,6 +182,7 @@ pub struct Machine
     pub outputClock: u128, 
     pub outputTickSpeed: u128, // tick for outputting 
     pub outputInProgress: bool,
+    pub outputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub outputWaiting: bool, // is there output in the machine, and room to spit it out?
     pub outputIDs: Vec<String>,
     pub outputInventory: usize, // represents num of items in it 
@@ -257,11 +259,13 @@ impl Machine
             processingClock: 0,
             processingTickSpeed,
             processingInProgress: false,
+            processingDebouncer: false,
             
             inputBehavior: None,
             inputClock: 0,
             inputTickSpeed,
             inputInProgress: false,
+            inputDebouncer: false,
             inputWaiting: false,
             inputIDs: inIDs,
             inputInventory: 0,
@@ -272,6 +276,7 @@ impl Machine
             outputClock: 0,
             outputTickSpeed,
             outputInProgress: false,
+            outputDebouncer: false,
             outputWaiting: false,
             outputIDs: outIDs,
             outputInventory: 0,
@@ -380,6 +385,74 @@ impl Machine
         }
 
         return false;
+    }
+
+    pub fn updateState(&mut self)
+    {
+        if self.state == OPCState::FAULTED
+        {
+            return;
+        }
+        
+        // Check for problems on this machine, like blocked or starved
+        if !self.processingInProgress// && !self.inputWaiting && !self.outputWaiting
+        {
+            // check if enough input 
+            if self.inputInventory < self.cost && !self.inputWaiting
+            { 
+                if self.state != OPCState::STARVED && self.inputDebouncer == true
+                {
+                    self.state = OPCState::STARVED;
+                    self.inputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved.", self.id);
+                    return;
+                }
+
+                if self.inputDebouncer == false
+                {
+                    self.inputDebouncer = true;
+                }
+                
+                return;
+            }
+
+            // check if room to output if processed
+            if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.outputWaiting
+            {
+                if self.state != OPCState::BLOCKED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::BLOCKED;
+                    self.outputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Blocked.", self.id);
+                }
+
+                if self.outputDebouncer == false
+                {
+                    self.outputDebouncer = true;
+                }
+                
+                return;
+            }
+        }
+
+        // Nothing else happened, so we must be producing (no problems on this machine)
+        if self.state != OPCState::PRODUCING && self.processingDebouncer == true
+        {
+            self.state = OPCState::PRODUCING;
+            self.processingDebouncer = false;
+            self.stateChangeCount += 1;
+            info!("ID {}: Producing.", self.id);
+            return;
+        }
+
+        if self.processingDebouncer == false
+        {
+            self.processingDebouncer = true;
+        }
+
+        return;
     }
     
     fn findInputSingle(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>) -> bool
@@ -508,43 +581,11 @@ impl Machine
     // Processess only if the output inventory is empty
     pub fn defaultProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
     {
-        if !self.processingInProgress// && !self.inputWaiting && !self.outputWaiting
-        {
-            // check if enough input 
-            if self.inputInventory < self.cost && !self.inputWaiting
-            { 
-                if self.state != OPCState::STARVED
-                {
-                    self.state = OPCState::STARVED;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Starved.", self.id);
-                }
-                return false;
-            }
-
-            // check if room to output if processed
-            if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.outputWaiting
-            {
-                if self.state != OPCState::BLOCKED
-                {
-                    self.state = OPCState::BLOCKED;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Blocked.", self.id);
-                }
-                return false;
-            }
-        }
-
         if !self.processingInProgress
             && self.inputInventory >= self.cost
             && self.outputInventory == 0 
             && self.outputInvCapacity >= self.throughput
         {
-            if self.state != OPCState::PRODUCING
-            {
-                self.state = OPCState::PRODUCING;
-                info!("ID {}: Producing.", self.id);
-            }
             self.processingInProgress = true;
             self.processingClock = 0;
         }
@@ -566,14 +607,7 @@ impl Machine
         self.outputInventory += self.throughput;
         self.producedCount += self.throughput;
 
-        if self.state != OPCState::PRODUCING
-        {
-            self.state = OPCState::PRODUCING;
-            info!("ID {}: Switched back to producing state and produced.", self.id);
-        }
-        else {
-            info!("ID {}: Produced.", self.id);
-        }
+        info!("ID {}: Produced.", self.id);
 
         self.processingInProgress = false;
         return true;

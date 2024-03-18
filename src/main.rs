@@ -9,6 +9,7 @@ use json::*;
 mod server;
 use server::*;
 
+use std::borrow::BorrowMut;
 use std::thread;
 use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
@@ -102,6 +103,7 @@ fn main() -> std::io::Result<()>
             machines.get_mut(id)
                     .expect(format!("Machine {id} does not exist.").as_str())
                     .borrow_mut()
+                    .get_mut()
                     .update(&mut conveyors, deltaTime, rng.gen_range(0..=std::i32::MAX));
         }
         // update all conveyor belts
@@ -364,8 +366,10 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
     let now = DateTime::now();
     for id in ids.iter()
     {
-        let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
+        let mut machine = machines.get(id).expect("Machine ceased to exist.").borrow_mut();
         let machineID = machine.id.to_string();
+
+        machine.updateState();
 
         let stateNodeID = nodeIDs.get(&format!("{machineID}-state")).expect("NodeId ceased to exist.");
         addressSpace.set_variable_value(stateNodeID, machine.state.to_string(), &now, &now);

@@ -38,7 +38,7 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.5,
+          "faultChance": 0.0,
           "faultMessage": "Default Fault Code.",
           "faultTimeHigh": 10.0,
           "faultTimeLow": 1.0,
