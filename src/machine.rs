@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::cell::RefMut;
 
+use opcua::core::runtime;
+use rand::Rng;
+
 extern crate serde_json;
 extern crate serde;
 use self::serde::Deserialize;
@@ -420,53 +423,32 @@ pub struct Machine
     pub producedCount: usize,
     pub consumedCount: usize,
     pub stateChangeCount: usize,
+
+    pub sensor: bool,
+    pub baseline: f64,
+    pub variance: f64
 }
 impl Machine
 {
-    //pub fn sensorSim(baseline: f64, variance: f64) -> f64
-    //{
-    //    let time = deltaTime;
-        //is essentially the variance, dictates the lower and upper bounds the readings can go
-    //    let amplitude = variance; 
-        //adjust frequency as desired (100 is default, making it 50 would double the speed)
-    //    let angFrequency = 2.0 * 3.14 / 25.0; 
-        //causes the starting temp to be the lower bounds 
-    //    let timeOffSet = -3.14 / 2.0;  
-        //produces a sinusoidal waveform centered on baseline
-    //    let flux = amplitude * (angFrequency * time + timeOffSet).sin(); 
-        //Add fluctuation to baseline* to get the current sens reading
-    //    let sensNum = baseline + flux;
+    
+    pub fn sensor_Sim(baseline: f64, variance: f64) -> f64
+    {
+        let mut rng = rand::thread_rng();
 
+        let change = rng.gen_range(-(variance/2.0)..=(variance/2.0)); //Random whole number change between the - half of variance and half of variance
         
-    //Track initial and make it start at time of 0
-    //    let initialSensNum = sensorSim(baseline, variance, 0.0);
-    //    let mut sensNum = initialSensNum;
+        let sensNum = baseline + change;
+        //This was used in testing to make sure this function worked, currently hovers around baseline and changes within the range
+        //of half of variance so that the data isnt bouncing directly from high end to low end
+        //println!("Temperature: {}", sensNum);
 
-        //TODO: move from this iterative loop and implement this logic with the new clock system / tick system
-    //    for time_step in time
-    //    {
-    //        let time_float = time_step as f64;
-    //        let newSensNum = sensorSim(baseline, variance, time_float);
-            //Make sure we are within bounds and reading changes by whole numbers
-    //        if newSensNum >= baseline - variance && newSensNum <= baseline + variance 
-    //        {
-    //           sensNum = newSensNum.round();
-    //        } 
-    //        else
-    //        {
-    //            let change = rng.gen_range(-2.0..=2.0); //Random whole number change between -2 and 2
-    //            sensNum += change;
-    //            sensNum = sensNum.max(baseline - variance).min(baseline + variance);
-    //        }
-            //println!("Time: {}, Temperature: {}", time_step, sensNum);
-    //    }
-            
-    //    return sensNum;             
-    //}
+        return sensNum;
+    }
+
 
     pub fn new(id: usize, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String, faultTimeHigh: f32, 
             faultTimeLow: f32, processingTickSpeed: u128, inputTickSpeed: u128, inputLanes: usize, inputInvCapacity: usize,
-            outputTickSpeed: u128, outputInvCapacity: usize, outputLanes: usize, beltCapacity: usize, beltTickSpeed: u128) -> Self
+            outputTickSpeed: u128, outputInvCapacity: usize, outputLanes: usize, beltCapacity: usize, beltTickSpeed: u128, sensor: bool, baseline: f64, variance: f64) -> Self
     {
         let mut inIDs = Vec::<MachineLaneID>::new();
         inIDs.reserve(inputLanes);
@@ -511,10 +493,16 @@ impl Machine
             beltInventories: inventories,
             beltClock: 0,
             beltTickSpeed,
+
+            sensor,
+            baseline,
+            variance,
             
             consumedCount: 0,
             producedCount: 0,
-            stateChangeCount: 0
+            stateChangeCount: 0,
+
+            
         };
 
         return newMachine;

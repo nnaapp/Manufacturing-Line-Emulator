@@ -186,7 +186,10 @@ fn factorySetup() -> (HashMap<usize, RefCell<Machine>>, Vec<usize>, f64, u128, u
             machine.outputCapacity,
             machine.outputLanes,
             machine.beltCapacity,
-            25 * 1000 // milliseconds to microseconds
+            25 * 1000, // milliseconds to microseconds
+            machine.sensor,
+            machine.baseline,
+            machine.variance,
         );
         newMachine.inputIDs = machine.inputIDs;
 
@@ -317,11 +320,6 @@ fn serverSetup(machinesHashMap: HashMap<usize, RefCell<Machine>>, lineName: &str
 // Handles updating the values of each machine on the OPC server
 fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<usize>)
 {
-    //for machine in machines
-    //{
-       //call sensorfunction to be updated with serverPoll 
-    //}
-
     let now = DateTime::now();
     for id in ids.iter()
     {
@@ -342,5 +340,10 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<usize, RefCell
 
         let outputInventoryNodeID = nodeIDs.get(&format!("{machineID}-output-inventory")).expect("NodeId ceased to exist.");
         addressSpace.set_variable_value(outputInventoryNodeID, machine.outputInventory as u64, &now, &now);
+
+        if machine.sensor == true 
+        {
+            machine::Machine::sensor_Sim(machine.baseline, machine.variance);
+        }
     }
 }

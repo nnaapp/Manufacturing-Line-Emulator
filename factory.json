@@ -59,7 +59,10 @@
           "outputSpeed": 0,
           "outputCapacity": 1,
           "outputLanes": 1,
-          "beltCapacity": 2
+          "beltCapacity": 2,
+          "sensor": false,
+          "baseline": 0,
+          "variance": 0
         },
         {
           "id": 2,
@@ -86,7 +89,9 @@
           "outputCapacity": 1,
           "outputLanes": 1,
           "beltCapacity": 2,
-          "sensor":false
+          "sensor": false,
+          "baseline": 0,
+          "variance": 0
         },
         {
           "id": 3,
@@ -117,7 +122,9 @@
           "outputCapacity": 1,
           "outputLanes": 1,
           "beltCapacity": 999,
-          "sensor":false
+          "sensor": false,
+          "baseline": 0,
+          "variance": 0
         }
     ]
   }
