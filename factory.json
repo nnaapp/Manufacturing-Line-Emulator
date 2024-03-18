@@ -7,94 +7,34 @@
     "Runtime": 60,
     "Machines": [
       {
-          "id": 0,
+          "id": "machine-0",
           "cost": 1,
-          "throughput": 120,
+          "throughput": 1,
           "state": "PRODUCING",
           "faultChance": 0.0,
           "faultMessage": "Machine exploded.",
-          "faultTimeHigh": 10.0,
+          "faultTimeHigh": 20.0,
           "faultTimeLow": 1.0,
           "inputIDs": [
-            {
-              "machineID": 0,
-              "laneID": 0
-            }
           ], 
           "inputBehavior": "SPAWNER", 
           "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 3000,
+          "processingSpeed": 1000,
+          "outputIDs": [
+            "belt-0toMiddleBelt",
+            "belt-0to2"
+          ],
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
-          "outputCapacity": 120,
-          "outputLanes": 3,
-          "beltCapacity": 120,
+          "outputCapacity": 1,
           "sensor": true,
           "baseline": 325.0, 
           "variance": 7.0
         },
         {
-          "id": 1,
-          "cost": 3,
-          "throughput": 1,
-          "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
-          "faultTimeHigh": 10.0,
-          "faultTimeLow": 1.0,
-          "inputIDs": [
-            {
-              "machineID": 0 ,
-              "laneID": 0
-            }
-          ], 
-          "inputBehavior": "DEFAULT", 
-          "inputSpeed": 0,
-          "inputCapacity": 3,
-          "processingBehavior": "DEFAULT",
-          "processingSpeed": 1500,
-          "outputBehavior": "DEFAULT",
-          "outputSpeed": 0,
-          "outputCapacity": 1,
-          "outputLanes": 1,
-          "beltCapacity": 2,
-          "sensor": false,
-          "baseline": 0,
-          "variance": 0
-        },
-        {
-          "id": 2,
-          "cost": 3,
-          "throughput": 1,
-          "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
-          "faultTimeHigh": 10.0,
-          "faultTimeLow": 1.0,
-          "inputIDs": [
-            {
-              "machineID": 0 ,
-              "laneID": 1
-            }
-          ], 
-          "inputBehavior": "DEFAULT", 
-          "inputSpeed": 0,
-          "inputCapacity": 3,
-          "processingBehavior": "DEFAULT",
-          "processingSpeed": 1500,
-          "outputBehavior": "DEFAULT",
-          "outputSpeed": 0,
-          "outputCapacity": 1,
-          "outputLanes": 1,
-          "beltCapacity": 2,
-          "sensor": false,
-          "baseline": 0,
-          "variance": 0
-        },
-        {
-          "id": 3,
+          "id": "machine-1",
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
@@ -103,29 +43,164 @@
           "faultTimeHigh": 10.0,
           "faultTimeLow": 1.0,
           "inputIDs": [
-            {
-              "machineID": 1,
-              "laneID": 0
-            },
-            {
-              "machineID": 2,
-              "laneID": 0
-            }
+            "MiddleBelt-to1"
           ], 
           "inputBehavior": "DEFAULT", 
           "inputSpeed": 0,
           "inputCapacity": 1,
           "processingBehavior": "DEFAULT",
-          "processingSpeed": 750,
-          "outputBehavior": "CONSUMER",
+          "processingSpeed": 2000,
+          "outputIDs": [
+            "belt-1to3"
+          ],
+          "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
           "outputCapacity": 1,
-          "outputLanes": 1,
-          "beltCapacity": 999,
           "sensor": false,
-          "baseline": 0,
-          "variance": 0
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          "id": "machine-2",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-0to2"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 2000,
+          "outputIDs": [
+            "belt-2to3"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          
+          "id": "machine-2",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-0to2"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 2000,
+          "outputIDs": [
+            "belt-2to3"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          "id": "machine-3",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-1to3",
+            "belt-2to3"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 2000,
+          "outputIDs": [
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          "id": "machine-3",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-1to3",
+            "belt-2to3"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 1000,
+          "outputBehavior": "CONSUMER",
+          "outputIDs": [
+          ],
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
         }
+    ],
+    "Conveyors": [
+      {
+        "id": "belt-0toMiddleBelt",
+        "capacity": 2,
+        "beltSpeed": 1000,
+        "inputID": null
+      },
+      {
+        "id": "MiddleBelt-to1",
+        "capacity": 3,
+        "beltSpeed": 1000,
+        "inputID": "belt-0toMiddleBelt"
+      },
+      {
+        "id": "belt-0to2",
+        "capacity": 5,
+        "beltSpeed": 1000,
+        "inputID": null
+      },
+      {
+        "id": "belt-1to3",
+        "capacity": 5,
+        "beltSpeed": 1000,
+        "inputID": null
+      },
+      {
+        "id": "belt-2to3",
+        "capacity": 5,
+        "beltSpeed": 1000,
+        "inputID": null
+      }
     ]
   }
 }

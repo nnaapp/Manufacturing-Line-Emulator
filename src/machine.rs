@@ -8,7 +8,6 @@ use rand::Rng;
 
 extern crate serde_json;
 extern crate serde;
-use self::serde::Deserialize;
 
 extern crate log2;
 use log2::*;
@@ -34,341 +33,6 @@ impl fmt::Display for OPCState
     }
 }
 
-pub struct MachineLine
-{
-    pub machines: HashMap<usize, RefCell<Machine>>,
-    pub ids: Vec<usize>,
-}
-impl MachineLine
-{
-    pub fn update(&mut self, deltaTime: u128, seed: i32)
-    {
-        for id in self.ids.clone().iter()
-        {
-            {
-                let mut machine = self.machines.get(id).expect("Machine ceased to exist.").borrow_mut();
-                machine.updateBelts(deltaTime);
-            }
-
-            {
-                let mut machine = self.machines.get(id).expect("Machine ceased to exist.").borrow_mut();
-                if machine.state != OPCState::FAULTED
-                {
-                    // Execute input
-                    // Input needs to manage: 
-                    //     inputInProgress
-                    //     inputWaiting
-                    //     inputClock
-                    if machine.inputBehavior.is_none()
-                    {
-                        error!("ID {}: Input behavior is not defined.", machine.id);
-                        machine.faultMessage = format!("Simulation Error: input behavior not defined.");
-                        return;
-                    }
-                    let inputBehavior = machine.inputBehavior.unwrap();
-                    inputBehavior(self, &mut machine, deltaTime);
-                }
-            }
-
-            {
-                let mut machine = self.machines.get(id).expect("Machine ceased to exist.").borrow_mut();
-                if machine.state != OPCState::FAULTED
-                {
-                    // Execute processing 
-                    // Processing needs to manage:
-                    //     processingInProgress
-                    //     processingClock
-                    if machine.processingBehavior.is_none()
-                    {
-                        error!("ID {}: Processing behavior is not defined.", machine.id);
-                        machine.faultMessage = format!("Simulation Error: processing behavior not defined.");
-                        return;
-                    }
-                    let processingBehavior = machine.processingBehavior.unwrap();
-                    processingBehavior(self, &mut machine, deltaTime, seed);
-                }
-            }
-
-            {
-                let mut machine = self.machines.get(id).expect("Machine ceased to exist.").borrow_mut();
-
-                if machine.state == OPCState::FAULTED
-                {
-                    machine.faulted();
-                }
-            }
-
-            {
-                let mut machine = self.machines.get(id).expect("Machine ceased to exist.").borrow_mut();
-                // Execute output
-                // Output needs to manage:
-                //     outputInProgress
-                //     outputWaiting
-                //     outputClock
-                if machine.outputBehavior.is_none()
-                {
-                    error!("ID {}: Output behavior is not defined.", machine.id);
-                    machine.faultMessage = format!("Simulation Error: output behavior not defined.");
-                    return;
-                }
-                let outputBehavior = machine.outputBehavior.unwrap();
-                outputBehavior(self, &mut machine, deltaTime);
-            }
-        }
-    }
-
-    fn findInputSingle(&self, machine: &mut RefMut<Machine>) -> bool
-    {
-        if machine.inputInventory >= machine.inputInvCapacity
-        {   
-            return false; 
-        }
-
-        for _i in 0 as usize..machine.inputIDs.len()
-        {   
-            let currentStructIDs = machine.inputIDs[machine.nextInput];
-            // gets the machine of interest 
-            let mut currentMachine = self.machines.get(&currentStructIDs.machineID).expect("Value does not exist").borrow_mut();
-
-            // belt has something 
-            if currentMachine.checkBeltSupply(currentStructIDs.laneID) == true { return true; }
-
-            machine.nextInput += 1;
-            machine.nextInput = machine.nextInput % machine.inputIDs.len();
-        }
-
-        return false;
-    }
-
-    fn findOutputSingle(&self, machine: &mut RefMut<Machine>) -> bool
-    {
-        if machine.outputInventory <= 0
-        {
-            return false;
-        }
-        
-        for _i in 0 as usize..machine.outputLanes
-        {
-            if machine.beltInventories[machine.nextOutput][0].is_none() { return true; }
-
-            machine.nextOutput += 1;
-            machine.nextOutput = machine.nextOutput % machine.beltInventories.len();
-        }
-        
-        return false;
-    }
-
-    #[allow(unused_variables)]
-    // Always has supply to input, like the start of a line
-    pub fn spawnerInput(&self, machine: &mut RefMut<Machine>, deltaTime: u128) -> bool
-    {
-        if !machine.inputInProgress && (machine.inputInventory < machine.inputInvCapacity)
-        {
-            // Set the input to be in progress
-            machine.inputWaiting = true;
-            machine.inputInProgress = true;
-            machine.inputClock = 0;
-        }
-
-        if !machine.inputInProgress 
-        { 
-            machine.inputWaiting = false;
-            return false; 
-        }
-
-        if machine.inputClock < machine.inputTickSpeed
-        {
-            machine.inputClock += deltaTime;
-            return false;
-        }
-
-        machine.inputInventory += 1;
-        machine.inputInProgress = false;
-        return true;        
-    }
-    
-    // Inputs only ONE thing if output is empty,
-    // ASSUMES that findOutputSingle has been called
-    pub fn singleInput(&self, machine: &mut RefMut<Machine>, deltaTime: u128) -> bool
-    {
-        if !machine.inputInProgress && machine.outputInventory <= 0 
-        {
-            if !self.findInputSingle(machine) { return false; }
-            // gets the machine of interest 
-            let currentMachineLaneID = machine.inputIDs[machine.nextInput];
-            let mut currentMachine = self.machines.get(&currentMachineLaneID.machineID).expect("Value does not exist").borrow_mut();
-            let currentLane = currentMachineLaneID.laneID;
-            let beltCapacity = currentMachine.beltCapacity;
-            // Take 1 item off it (reserve so nothing else can take it, essentially)
-            currentMachine.beltInventories[currentLane][beltCapacity - 1] = None;
-            // Increment nextInput for balanced taking of items
-            machine.nextInput += 1;
-            machine.nextInput = machine.nextInput % machine.inputIDs.len();
-
-            // Set the input to be in progress
-            machine.inputWaiting = true;
-            machine.inputInProgress = true;
-            machine.inputClock = 0;
-        }
-
-        if !machine.inputInProgress 
-        { 
-            machine.inputWaiting = false;
-            return false; 
-        }
-
-        if machine.inputClock < machine.inputTickSpeed
-        {
-            machine.inputClock += deltaTime;
-            return false;
-        }
-
-        machine.inputInventory += 1;
-        machine.inputInProgress = false;
-        return true;
-    }
-
-    // Processess only if the output inventory is empty
-    pub fn defaultProcessing(&self, machine: &mut RefMut<Machine>, deltaTime: u128, seed: i32) -> bool
-    {
-        if !machine.processingInProgress && !machine.inputWaiting && !machine.outputWaiting
-        {
-            // check if enough input 
-            if machine.inputInventory < machine.cost
-            { 
-                if machine.state != OPCState::STARVED
-                {
-                    machine.state = OPCState::STARVED;
-                    machine.stateChangeCount += 1;
-                    info!("ID {}: Starved.", machine.id);
-                }
-                return false;
-            }
-
-            // check if room to output if processed
-            if machine.outputInventory != 0 || machine.outputInvCapacity < machine.throughput
-            {
-                if machine.state != OPCState::BLOCKED
-                {
-                    machine.state = OPCState::BLOCKED;
-                    machine.stateChangeCount += 1;
-                    info!("ID {}: Blocked.", machine.id);
-                }
-                return false;
-            }
-        }
-
-        if !machine.processingInProgress
-            && machine.inputInventory >= machine.cost
-            && machine.outputInventory == 0 
-            && machine.outputInvCapacity >= machine.throughput
-        {
-            machine.processingInProgress = true;
-            machine.processingClock = 0;
-        }
-
-        if !machine.processingInProgress { return false; }
-
-        if machine.processingClock < machine.processingTickSpeed
-        {
-            machine.processingClock += deltaTime;
-            return false;
-        }
-
-        if machine.checkIfShouldFault(seed) { return false; }
-        
-        // process 
-        machine.inputInventory -= machine.cost;
-        machine.consumedCount += machine.cost;
-
-        machine.outputInventory += machine.throughput;
-        machine.producedCount += machine.throughput;
-
-        if machine.state != OPCState::PRODUCING
-        {
-            machine.state = OPCState::PRODUCING;
-            info!("ID {}: Switched back to producing state and produced.", machine.id);
-        }
-        else {
-            info!("ID {}: Produced.", machine.id);
-        }
-
-        machine.processingInProgress = false;
-        return true;
-    }
-
-    // Outputs one thing onto one lane at a time
-    pub fn singleOutput(&self, machine: &mut RefMut<Machine>, deltaTime: u128) -> bool
-    {
-        if !machine.outputInProgress && machine.outputInventory > 0
-        {
-            if !self.findOutputSingle(machine) { return false; }
-
-            // Debating this one, unsure if this should be pre or post clock
-            // machine.outputInventory -= 1;
-            machine.outputWaiting = true;
-            machine.outputInProgress = true;
-            machine.outputClock = 0;
-        }
-
-        if !machine.outputInProgress 
-        { 
-            machine.outputWaiting = false;
-            return false; 
-        }
-
-        if machine.outputClock < machine.outputTickSpeed
-        {
-            machine.outputClock += deltaTime;
-            return false;
-        }
-
-        machine.outputInventory -= 1;
-        let nextOutput = machine.nextOutput;
-        machine.beltInventories[nextOutput][0] = Some(BeltItem { moveClock: 0, tickSpeed: machine.beltTickSpeed, isMoving: false });
-
-        machine.nextOutput += 1;
-        machine.nextOutput = machine.nextOutput % machine.beltInventories.len();
-
-        machine.outputInProgress = false;
-        return true;
-    }
-
-    // Always has space to output, like the end of a line
-    pub fn consumerOutput(&self, machine: &mut RefMut<Machine>, deltaTime: u128) -> bool
-    {
-        if !machine.outputInProgress && machine.outputInventory > 0
-        {
-            machine.outputWaiting = true;
-            machine.outputInProgress = true;
-            machine.outputClock = 0;
-        }
-
-        if !machine.outputInProgress 
-        { 
-            machine.outputWaiting = false;
-            return false; 
-        }
-
-        if machine.outputClock < machine.outputTickSpeed
-        {
-            machine.outputClock += deltaTime;
-            return false;
-        }
-
-        machine.outputInventory -= 1;
-        machine.outputInProgress = false;
-        return true;
-    }
-}
-
-#[derive(Clone, Copy, Debug, Deserialize)]
-pub struct MachineLaneID
-{
-    pub machineID: usize,
-    pub laneID: usize,
-}
-
 #[derive(Clone)]
 pub struct BeltItem
 {
@@ -377,10 +41,119 @@ pub struct BeltItem
     pub isMoving: bool,
 }
 
+pub struct ConveyorBelt
+{
+    pub id: String,
+    pub capacity: usize,
+    pub belt: Vec<Option<BeltItem>>,
+    pub beltSpeed: u128,
+    pub isInputIDSome: bool,
+    pub inputID: Option<String>,
+}
+impl ConveyorBelt
+{
+    pub fn new(id: String, capacity: usize, beltSpeed: u128, inputID: Option<String>) -> ConveyorBelt
+    {
+        let belt = vec![None; capacity];
+        let isInputIDSome = inputID.is_some();
+        return ConveyorBelt { id, capacity, belt, beltSpeed, isInputIDSome, inputID };
+    }
+
+    pub fn update(&mut self, inputConveyor: Option<RefMut<ConveyorBelt>>, deltaTime: u128)
+    {
+        if self.isInputIDSome
+        {
+            let id = &self.id;
+            self.takeInput(&mut inputConveyor.expect(format!("Conveyor {id}'s input conveyor does not exist.").as_str()));
+        }
+        
+        let len = self.belt.len();
+        for i in 0 as usize..len - 1
+        {
+            // Get two mutable references, one to the (maybe) moving item,
+            // and one to the destination
+            let (head, tail) = self.belt.split_at_mut(i + 1);
+            let item = head[i].as_mut();
+            let nextItem = tail[0].as_mut();
+
+            // If there is an item to move, unwrap
+            if let Some(item) = item
+            {
+                // If the item isn't moving, isn't at the end, and the next spot isn't occupied,
+                // start moving the item and zero its clock
+                if !item.isMoving && nextItem.is_none()
+                {
+                    item.isMoving = true;
+                    item.moveClock = 0;
+                }
+                else if !item.isMoving { continue; }
+
+                // Increment the item's movement clock, and continue
+                // if it is not done yet
+                item.moveClock += deltaTime;
+                if item.moveClock < item.tickSpeed { continue; }
+
+                // Movement is done, move the item up a place
+                item.isMoving = false;
+                self.belt[i + 1] = Some(item.to_owned());
+                self.belt[i] = None;
+            }
+        }
+    }
+
+    pub fn takeInput(&mut self, inputConveyor: &mut RefMut<ConveyorBelt>) -> bool
+    {
+        // take input off optional input conveyor belt
+        if !self.isStartSome() && inputConveyor.isEndSome()
+        {
+            inputConveyor.pullItem();
+            self.pushItem();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn isStartSome(&mut self) -> bool
+    {
+        return self.belt[0].is_some();
+    }
+
+    pub fn isEndSome(&mut self) -> bool
+    {
+        let len = self.belt.len();
+        return self.belt[len - 1].is_some();
+    }
+
+    pub fn pushItem(&mut self) -> bool
+    {
+        if !self.isStartSome()
+        {
+            self.belt[0] = Some(BeltItem { moveClock: 0, tickSpeed: self.beltSpeed, isMoving: false });
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn pullItem(&mut self) -> bool
+    {
+        if self.isEndSome()
+        {
+            let len = self.belt.len();
+            self.belt[len - 1] = None;
+            return true;
+        }
+
+        return false;
+    }
+}
+
 #[derive(Clone)]
 pub struct Machine
 {
-    pub id: usize,
+    pub id: String,
     pub cost: usize, // Cost to produce
     pub throughput: usize, // How much gets produced
     pub state: OPCState,
@@ -388,37 +161,36 @@ pub struct Machine
     pub faultMessage: String, //string for fault messages 
     pub faultTimeHigh: f32,
     pub faultTimeLow: f32,
+    pub faultTimeCurrent: u128,
+    pub faultClock: u128,
 
-    pub processingBehavior: Option<fn(&MachineLine, &mut RefMut<Machine>, u128, i32) -> bool>, 
+    pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
     pub processingClock: u128, // deltaTime is in milliseconds
     pub processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
     pub processingInProgress: bool,
-    
+    pub processingDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
 
-    pub inputBehavior: Option<fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
+    pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
     pub inputClock: u128,
     pub inputTickSpeed: u128, // tick for pulling input into inputInventory
     pub inputInProgress: bool,
+    pub inputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub inputWaiting: bool, // is there room for input, and input to be taken?
-    pub inputIDs: Vec<MachineLaneID>, // Vector of machine/lane IDs for input, used as indices
+    pub inputIDs: Vec<String>, // Vector of machine/lane IDs for input, used as indices
     pub inputInventory: usize, // storage place in machine before process 
     pub inputInvCapacity: usize, 
     pub nextInput: usize, // the input lane to start checking from 
 
-    pub outputBehavior: Option<fn(&MachineLine, &mut RefMut<Machine>, u128) -> bool>,
+    pub outputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>,
     pub outputClock: u128, 
     pub outputTickSpeed: u128, // tick for outputting 
     pub outputInProgress: bool,
+    pub outputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub outputWaiting: bool, // is there output in the machine, and room to spit it out?
+    pub outputIDs: Vec<String>,
     pub outputInventory: usize, // represents num of items in it 
     pub outputInvCapacity: usize,
     pub nextOutput: usize, // the output lane to start checkng from
-
-    pub outputLanes: usize, // number out output lanes
-    pub beltCapacity: usize, // Capacity of EACH beltInventories
-    pub beltInventories: Vec<Vec<Option<BeltItem>>>, // Vector of inventories, one per output lane
-    pub beltClock: u128,
-    pub beltTickSpeed: u128,
 
     pub producedCount: usize,
     pub consumedCount: usize,
@@ -430,7 +202,6 @@ pub struct Machine
 }
 impl Machine
 {
-    
     pub fn sensor_Sim(baseline: f64, variance: f64) -> f64
     {
         let mut rng = rand::thread_rng();
@@ -445,14 +216,12 @@ impl Machine
         return sensNum;
     }
 
-
-    pub fn new(id: usize, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String, faultTimeHigh: f32, 
-            faultTimeLow: f32, processingTickSpeed: u128, inputTickSpeed: u128, inputLanes: usize, inputInvCapacity: usize,
-            outputTickSpeed: u128, outputInvCapacity: usize, outputLanes: usize, beltCapacity: usize, beltTickSpeed: u128, sensor: bool, baseline: f64, variance: f64) -> Self
+    pub fn new(id: String, cost: usize, throughput: usize, state: OPCState, faultChance: f32, faultMessage: String,
+            faultTimeHigh: f32, faultTimeLow: f32, processingTickSpeed: u128, inputTickSpeed: u128, inputInvCapacity: usize,
+            outputTickSpeed: u128, outputInvCapacity: usize, sensor: bool, baseline: f64, variance: f64) -> Self
     {
-        let mut inIDs = Vec::<MachineLaneID>::new();
-        inIDs.reserve(inputLanes);
-        let inventories = vec![vec![None; beltCapacity]; outputLanes];
+        let inIDs = Vec::<String>::new();
+        let outIDs = Vec::<String>::new();
 
         let newMachine = Machine {
             id,
@@ -463,16 +232,20 @@ impl Machine
             faultMessage,
             faultTimeHigh,
             faultTimeLow,
+            faultTimeCurrent: 0,
+            faultClock: 0,
 
             processingBehavior: None,
             processingClock: 0,
             processingTickSpeed,
             processingInProgress: false,
+            processingDebouncer: false,
             
             inputBehavior: None,
             inputClock: 0,
             inputTickSpeed,
             inputInProgress: false,
+            inputDebouncer: false,
             inputWaiting: false,
             inputIDs: inIDs,
             inputInventory: 0,
@@ -483,16 +256,12 @@ impl Machine
             outputClock: 0,
             outputTickSpeed,
             outputInProgress: false,
+            outputDebouncer: false,
             outputWaiting: false,
+            outputIDs: outIDs,
             outputInventory: 0,
             outputInvCapacity,
             nextOutput: 0,
-
-            outputLanes,
-            beltCapacity,
-            beltInventories: inventories,
-            beltClock: 0,
-            beltTickSpeed,
 
             sensor,
             baseline,
@@ -508,11 +277,80 @@ impl Machine
         return newMachine;
     }
 
+    pub fn update(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128, seed: i32)
+    {
+        {
+            if self.state != OPCState::FAULTED
+            {
+                // Execute input
+                // Input needs to manage: 
+                //     inputInProgress
+                //     inputWaiting
+                //     inputClock
+                if self.inputBehavior.is_none()
+                {
+                    error!("ID {}: Input behavior is not defined.", self.id);
+                    self.faultMessage = format!("Simulation Error: input behavior not defined.");
+                    return;
+                }
+                let inputBehavior = self.inputBehavior.unwrap();
+                inputBehavior(self, conveyors, deltaTime);
+            }
+        }
+
+        {
+            if self.state != OPCState::FAULTED
+            {
+                // Execute processing 
+                // Processing needs to manage:
+                //     processingInProgress
+                //     processingClock
+                if self.processingBehavior.is_none()
+                {
+                    error!("ID {}: Processing behavior is not defined.", self.id);
+                    self.faultMessage = format!("Simulation Error: processing behavior not defined.");
+                    return;
+                }
+                let processingBehavior = self.processingBehavior.unwrap();
+                processingBehavior(self, deltaTime, seed);
+            }
+        }
+
+        {
+            if self.state == OPCState::FAULTED
+            {
+                self.faulted(deltaTime);
+            }
+        }
+
+        {
+            // Execute output
+            // Output needs to manage:
+            //     outputInProgress
+            //     outputWaiting
+            //     outputClock
+            if self.outputBehavior.is_none()
+            {
+                error!("ID {}: Output behavior is not defined.", self.id);
+                self.faultMessage = format!("Simulation Error: output behavior not defined.");
+                return;
+            }
+            let outputBehavior = self.outputBehavior.unwrap();
+            outputBehavior(self, conveyors, deltaTime);
+        }
+    }
+
     // Function for faulted state
-    fn faulted(&mut self)
+    fn faulted(&mut self, deltaTime: u128)
     {
         // println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
-        // TODO: unfaulting
+        self.faultClock += deltaTime;
+        if self.faultClock < self.faultTimeCurrent 
+        {
+            return;
+        }
+        self.state = OPCState::PRODUCING;
+        info!("ID {} : Has been fixed: Producing Again.", self.id);
     }
 
     fn checkIfShouldFault(&mut self, seed: i32) -> bool
@@ -526,139 +364,311 @@ impl Machine
             self.stateChangeCount += 1;
             self.processingInProgress = false;
             self.inputInProgress = false;
+            let midTimePercent = (seed % 101) as f32 / 100.0; //turn seed into percentage
+            self.faultTimeCurrent = ((self.faultTimeHigh - self.faultTimeLow) * midTimePercent + self.faultTimeLow) as u128; //sets fault time to the a percent of the way between the low and high values.
+            self.faultClock = 0;
             return true;
         }
 
         return false;
     }
 
-    fn updateBelts(&mut self, deltaTime: u128)
+    pub fn updateState(&mut self)
     {
-        for belt in self.beltInventories.iter_mut()
+        if self.state == OPCState::FAULTED
         {
-            let len = belt.len();
-            for i in 0 as usize..len - 1
-            {
-                // Get two mutable references, one to the (maybe) moving item,
-                // and one to the destination
-                let (head, tail) = belt.split_at_mut(i + 1);
-                let item = head[i].as_mut();
-                let nextItem = tail[0].as_mut();
-
-                // If there is an item to move, unwrap
-                if let Some(item) = item
+            return;
+        }
+        
+        // Check for problems on this machine, like blocked or starved
+        if !self.processingInProgress// && !self.inputWaiting && !self.outputWaiting
+        {
+            // check if enough input 
+            if self.inputInventory < self.cost && !self.inputWaiting
+            { 
+                if self.state != OPCState::STARVED && self.inputDebouncer == true
                 {
-                    // If the item isn't moving, isn't at the end, and the next spot isn't occupied,
-                    // start moving the item and zero its clock
-                    if !item.isMoving && nextItem.is_none()
-                    {
-                        item.isMoving = true;
-                        item.moveClock = 0;
-                    }
-                    else if !item.isMoving { continue; }
-
-                    // Increment the item's movement clock, and continue
-                    // if it is not done yet
-                    item.moveClock += deltaTime;
-                    if item.moveClock < item.tickSpeed { continue; }
-
-                    // Movement is done, move the item up a place
-                    item.isMoving = false;
-                    belt[i + 1] = Some(item.to_owned());
-                    belt[i] = None;
+                    self.state = OPCState::STARVED;
+                    self.inputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved.", self.id);
+                    return;
                 }
+
+                if self.inputDebouncer == false
+                {
+                    self.inputDebouncer = true;
+                }
+                
+                return;
+            }
+
+            // check if room to output if processed
+            if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.outputWaiting
+            {
+                if self.state != OPCState::BLOCKED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::BLOCKED;
+                    self.outputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Blocked.", self.id);
+                }
+
+                if self.outputDebouncer == false
+                {
+                    self.outputDebouncer = true;
+                }
+                
+                return;
             }
         }
-    }
 
-    fn checkBeltSupply(&mut self, id: usize) -> bool
+        // Nothing else happened, so we must be producing (no problems on this machine)
+        if self.state != OPCState::PRODUCING && self.processingDebouncer == true
+        {
+            self.state = OPCState::PRODUCING;
+            self.processingDebouncer = false;
+            self.stateChangeCount += 1;
+            info!("ID {}: Producing.", self.id);
+            return;
+        }
+
+        if self.processingDebouncer == false
+        {
+            self.processingDebouncer = true;
+        }
+
+        return;
+    }
+    
+    fn findInputSingle(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>) -> bool
     {
-        // Check final spot on belt, as that is the spot waiting to be taken as input
-        return self.beltInventories[id][self.beltCapacity - 1].is_some();
+        if self.inputInventory >= self.inputInvCapacity
+        {   
+            return false; 
+        }
+
+        for _i in 0 as usize..self.inputIDs.len()
+        {   
+            let currentInputID = &self.inputIDs[self.nextInput];
+            // gets the conveyor of interest 
+            let mut currentConveyor = 
+                conveyors.get(currentInputID)
+                        .expect(format!("Conveyor {currentInputID} does not exist.").as_str())
+                        .borrow_mut();
+            // belt has something 
+            if currentConveyor.isEndSome() == true { return true; }
+
+            self.nextInput += 1;
+            self.nextInput = self.nextInput % self.inputIDs.len();
+        }
+
+        return false;
     }
 
-    // // TODO: fix to work with new clock system
-    // pub fn flowInput(&mut self, deltaTime: u128, mut machines: HashMap<usize, RefCell<Machine>>) -> bool
-    // {
-    //     // check if space in input and output inventories
-    //     // if self.inputInventory >= self.inputInvCapacity
-    //     // {   
-    //     //     return false; 
-    //     // }
-      
-    //     // for _i in 0 as usize..self.inputIDs.len()
-    //     // {   
-    //     //     let currentStructIDs = self.inputIDs[self.nextInput];
-    //     //     // gets the machine of interest 
-    //     //     let currentMachine = machines.get_mut(&currentStructIDs.machineID).expect("Value does not exist");
-    //     //     // num of items on this belt
-    //     //     let numOnBelt = currentMachine.beltInventories[currentStructIDs.laneID];
+    fn findOutputSingle(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>) -> bool
+    {
+        if self.outputInventory <= 0
+        {
+            return false;
+        }
 
-    //     //     // belt has something 
-    //     //     if numOnBelt > 0
-    //     //     {
-    //     //         currentMachine.beltInventories[currentStructIDs.laneID] -= 1;
-    //     //         self.inputInventory += 1;
-    //     //         self.nextInput += 1;
-    //     //         // stays the same, resets if out of bounds 
-    //     //         self.nextInput = self.nextInput % self.inputIDs.len();
-    //     //         return true;
-                
-    //     //     }
+        for _i in 0 as usize..self.outputIDs.len()
+        {
+            let currentOutputID = &self.outputIDs[self.nextOutput];
+            let mut currentConveyor = 
+                conveyors.get(currentOutputID)
+                        .expect(format!("Conveyor {currentOutputID} does not exist.").as_str())
+                        .borrow_mut();
+            if currentConveyor.isStartSome() == false { return true; }
 
-    //     //     self.nextInput += 1;
-    //     //     self.nextInput = self.nextInput % self.inputIDs.len();
-    //     // }
-
-    //     return false;
-    // }
-
-    // // Processes if there is enough room in output, even if not empty
-    // // TODO: fix with new clock system
-    // pub fn flowProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
-    // {
-    //     // // check if enough input 
-    //     // if self.inputInventory < self.cost
-    //     // { 
-    //     //     if self.state != OPCState::STARVED
-    //     //     {
-    //     //         self.state = OPCState::STARVED;
-    //     //         self.stateChangeCount += 1;
-    //     //         println!("ID {}: Starved.", self.id);
-    //     //     }
-    //     //     return false;
-    //     // }
-
-    //     // // check if room to output if processed
-    //     // if self.outputInvCapacity - self.outputInventory < self.throughput
-    //     // {
-    //     //     if self.state != OPCState::BLOCKED
-    //     //     {
-    //     //         self.state = OPCState::BLOCKED;
-    //     //         self.stateChangeCount += 1;
-    //     //         println!("ID {}: Blocked.", self.id);
-    //     //     }
-    //     //     return false;
-    //     // }
+            self.nextOutput += 1;
+            self.nextOutput = self.nextOutput % self.outputIDs.len();
+        }
         
-    //     // if self.checkIfShouldFault(seed) { return false; }
+        return false;
+    }
 
-    //     // // process 
-    //     // self.inputInventory -= self.cost;
-    //     // self.consumedCount += self.cost;
+    #[allow(unused_variables)]
+    // Always has supply to input, like the start of a line
+    pub fn spawnerInput(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128) -> bool
+    {
+        if !self.inputInProgress && (self.inputInventory < self.inputInvCapacity)
+        {
+            // Set the input to be in progress
+            self.inputWaiting = true;
+            self.inputInProgress = true;
+            self.inputClock = 0;
+        }
 
-    //     // self.outputInventory += self.throughput;
-    //     // self.producedCount += self.throughput;
+        if !self.inputInProgress 
+        { 
+            self.inputWaiting = false;
+            return false; 
+        }
 
-    //     // if self.state != OPCState::PRODUCING
-    //     // {
-    //     //     self.state = OPCState::PRODUCING;
-    //     //     println!("ID {}: Switched back to producing state and produced.", self.id);
-    //     // }
-    //     // else {
-    //     //     println!("ID {}: Produced.", self.id);
-    //     // }
+        if self.inputClock < self.inputTickSpeed
+        {
+            self.inputClock += deltaTime;
+            return false;
+        }
 
-    //     return true;
-    // }
+        self.inputInventory += 1;
+        self.inputInProgress = false;
+        return true;        
+    }
+    
+    // Inputs only ONE thing if output is empty,
+    // ASSUMES that findOutputSingle has been called
+    pub fn singleInput(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128) -> bool
+    {
+        if !self.inputInProgress && self.outputInventory <= 0 
+        {
+            if !self.findInputSingle(conveyors) 
+            {
+                self.inputWaiting = false; 
+                return false; 
+            }
+            // gets the self of interest 
+            let currentInputID = &self.inputIDs[self.nextInput];
+            let mut currentConveyor = 
+                conveyors.get(currentInputID)
+                        .expect(format!("Conveyor {currentInputID} does not exist.").as_str())
+                        .borrow_mut();
+            // Take 1 item off it (reserve so nothing else can take it, essentially)
+            currentConveyor.pullItem();
+            // Increment nextInput for balanced taking of items
+            self.nextInput += 1;
+            self.nextInput = self.nextInput % self.inputIDs.len();
+
+            // Set the input to be in progress
+            self.inputWaiting = true;
+            self.inputInProgress = true;
+            self.inputClock = 0;
+        }
+
+        if !self.inputInProgress 
+        { 
+            self.inputWaiting = false;
+            return false; 
+        }
+
+        if self.inputClock < self.inputTickSpeed
+        {
+            self.inputClock += deltaTime;
+            return false;
+        }
+
+        self.inputInventory += 1;
+        self.inputInProgress = false;
+        return true;
+    }
+
+    // Processess only if the output inventory is empty
+    pub fn defaultProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
+    {
+        if !self.processingInProgress
+            && self.inputInventory >= self.cost
+            && self.outputInventory == 0 
+            && self.outputInvCapacity >= self.throughput
+        {
+            self.processingInProgress = true;
+            self.processingClock = 0;
+        }
+
+        if !self.processingInProgress { return false; }
+
+        if self.processingClock < self.processingTickSpeed
+        {
+            self.processingClock += deltaTime;
+            return false;
+        }
+
+        if self.checkIfShouldFault(seed) { return false; }
+        
+        // process 
+        self.inputInventory -= self.cost;
+        self.consumedCount += self.cost;
+
+        self.outputInventory += self.throughput;
+        self.producedCount += self.throughput;
+
+        info!("ID {}: Produced.", self.id);
+
+        self.processingInProgress = false;
+        return true;
+    }
+
+    // Outputs one thing onto one lane at a time
+    pub fn singleOutput(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128) -> bool
+    {
+        if !self.outputInProgress && self.outputInventory > 0
+        {
+            if !self.findOutputSingle(conveyors) 
+            {
+                self.outputWaiting = false; 
+                return false; 
+            }
+            // Debating this one, unsure if this should be pre or post clock
+            // self.outputInventory -= 1;
+            self.outputWaiting = true;
+            self.outputInProgress = true;
+            self.outputClock = 0;
+        }
+
+        if !self.outputInProgress 
+        { 
+            self.outputWaiting = false;
+            return false; 
+        }
+
+        if self.outputClock < self.outputTickSpeed
+        {
+            self.outputClock += deltaTime;
+            return false;
+        }
+
+        self.outputInventory -= 1;
+        let currentOutputID = &self.outputIDs[self.nextOutput];
+        let mut currentConveyor = 
+            conveyors.get(currentOutputID)
+                    .expect(format!("Conveyor {currentOutputID} does not exist.").as_str())
+                    .borrow_mut();
+        currentConveyor.pushItem();
+        // self.beltInventories[nextOutput][0] = Some(BeltItem { moveClock: 0, tickSpeed: self.beltTickSpeed, isMoving: false });
+
+        self.nextOutput += 1;
+        self.nextOutput = self.nextOutput % self.outputIDs.len();
+
+        self.outputInProgress = false;
+        return true;
+    }
+
+    // Always has space to output, like the end of a line
+    #[allow(unused_variables)]
+    pub fn consumerOutput(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128) -> bool
+    {
+        if !self.outputInProgress && self.outputInventory > 0
+        {
+            self.outputWaiting = true;
+            self.outputInProgress = true;
+            self.outputClock = 0;
+        }
+
+        if !self.outputInProgress 
+        { 
+            self.outputWaiting = false;
+            return false; 
+        }
+
+        if self.outputClock < self.outputTickSpeed
+        {
+            self.outputClock += deltaTime;
+            return false;
+        }
+
+        self.outputInventory -= 1;
+        self.outputInProgress = false;
+        return true;
+    }
 }

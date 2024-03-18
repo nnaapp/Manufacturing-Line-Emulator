@@ -6,11 +6,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
-use machine::MachineLaneID;
-
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct JSONMachine {
-    pub id: usize,
+    pub id: String,
     pub cost: usize,
     pub throughput: usize,
     pub state: String,
@@ -18,20 +16,27 @@ pub struct JSONMachine {
     pub faultMessage: String,
     pub faultTimeHigh: f32,
     pub faultTimeLow: f32,
-    pub inputIDs: Vec<MachineLaneID>,
+    pub inputIDs: Vec<String>,
     pub inputBehavior: String,
     pub inputSpeed: u128, // ms
     pub inputCapacity: usize,
     pub processingBehavior: String,
     pub processingSpeed: u128,
+    pub outputIDs: Vec<String>,
     pub outputBehavior: String,
     pub outputSpeed: u128,
     pub outputCapacity: usize,
-    pub outputLanes: usize,
-    pub beltCapacity: usize,
     pub sensor: bool,
     pub baseline: f64, 
-    pub variance: f64    
+    pub variance: f64,    
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct JSONConveyor {
+    pub id: String,
+    pub capacity: usize,
+    pub beltSpeed: u128,
+    pub inputID: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -42,6 +47,7 @@ pub struct JSONFactory {
     pub pollRate: u128,
     pub Runtime: u128,
     pub Machines: Vec<JSONMachine>,
+    pub Conveyors: Vec<JSONConveyor>,
 }
 
 #[derive(Debug, Deserialize)]
