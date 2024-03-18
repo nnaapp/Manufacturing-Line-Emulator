@@ -55,7 +55,10 @@
           ],
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
-          "outputCapacity": 1
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
         },
         {
           "id": "machine-2",
@@ -80,7 +83,64 @@
           "outputBehavior": "DEFAULT",
           "outputSpeed": 0,
           "outputCapacity": 1,
-          "sensor":false
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          
+          "id": "machine-2",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-0to2"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 2000,
+          "outputIDs": [
+            "belt-2to3"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
+        },
+        {
+          "id": "machine-3",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faultChance": 0.0,
+          "faultMessage": "Default Fault Code.",
+          "faultTimeHigh": 10.0,
+          "faultTimeLow": 1.0,
+          "inputIDs": [
+            "belt-1to3",
+            "belt-2to3"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeed": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeed": 2000,
+          "outputIDs": [
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeed": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
         },
         {
           "id": "machine-3",
@@ -105,7 +165,9 @@
           ],
           "outputSpeed": 0,
           "outputCapacity": 1,
-          "sensor":false
+          "sensor": false,
+          "baseline": 0.0,
+          "variance": 0.0
         }
     ],
     "Conveyors": [

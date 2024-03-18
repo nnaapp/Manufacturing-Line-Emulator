@@ -26,9 +26,9 @@ pub struct JSONMachine {
     pub outputBehavior: String,
     pub outputSpeed: u128,
     pub outputCapacity: usize,
-    //pub sensor: bool,
-    //pub baseline: f64, 
-    //pub variance: f64    
+    pub sensor: bool,
+    pub baseline: f64, 
+    pub variance: f64,    
 }
 
 #[derive(Clone, Debug, Deserialize)]
