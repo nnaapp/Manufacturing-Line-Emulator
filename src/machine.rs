@@ -19,6 +19,7 @@ pub enum OPCState
     FAULTED,
     BLOCKED,
     STARVED,
+    STARVEDBLOCKED,
 }
 impl fmt::Display for OPCState
 {
@@ -29,6 +30,7 @@ impl fmt::Display for OPCState
             OPCState::FAULTED => write!(f, "faulted"),
             OPCState::BLOCKED => write!(f, "blocked"),
             OPCState::STARVED => write!(f, "starved"),
+            OPCState::STARVEDBLOCKED => write!(f, "starved and blocked"),
         }
     }
 }
@@ -383,30 +385,68 @@ impl Machine
         // Check for problems on this machine, like blocked or starved
         if !self.processingInProgress// && !self.inputWaiting && !self.outputWaiting
         {
-            // check if enough input 
+            // not enough input 
             if self.inputInventory < self.cost && !self.inputWaiting
-            { 
-                if self.state != OPCState::STARVED && self.inputDebouncer == true
+            {  
+                if self.state == OPCState::BLOCKED && self.inputDebouncer == true
+                {
+                    self.state = OPCState::STARVEDBLOCKED;
+                    self.inputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved and Blocked", self.id)
+
+                }
+                else if self.state == OPCState::PRODUCING && self.inputDebouncer == true
                 {
                     self.state = OPCState::STARVED;
                     self.inputDebouncer = false;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved.", self.id);
-                    return;
+                }
+                
+                if self.inputDebouncer == false
+                {
+                    self.inputDebouncer = true;
+                }
+
+            }
+            // enough input, remove starved state
+            else
+            {
+                if self.state == OPCState::STARVED && self.inputDebouncer == true
+                {
+                    self.state = OPCState::PRODUCING;
+                    self.inputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Back to producing state", self.id);
+                }
+                if self.state == OPCState::STARVEDBLOCKED && self.inputDebouncer == true
+                {
+                    self.state = OPCState::BLOCKED;
+                    self.inputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Blocked", self.id);
                 }
 
                 if self.inputDebouncer == false
                 {
                     self.inputDebouncer = true;
                 }
-                
-                return;
             }
 
             // check if room to output if processed
             if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.outputWaiting
             {
-                if self.state != OPCState::BLOCKED && self.outputDebouncer == true
+                
+                if self.state == OPCState::STARVED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::STARVEDBLOCKED;
+                    self.outputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved and Blocked", self.id)
+
+                }
+                else if self.state == OPCState::PRODUCING && self.outputDebouncer == true
                 {
                     self.state = OPCState::BLOCKED;
                     self.outputDebouncer = false;
@@ -420,6 +460,33 @@ impl Machine
                 }
                 
                 return;
+            }
+            // enough output room, get out of blocked state
+            else 
+            {
+                if self.state == OPCState::STARVEDBLOCKED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::STARVED;
+                    self.outputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved.", self.id);
+                }
+                else if self.state == OPCState::STARVED
+                {
+                    return;
+                }
+                else if self.state == OPCState::BLOCKED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::PRODUCING;
+                    self.outputDebouncer = false;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Back to producing", self.id)
+                }
+   
+                if self.outputDebouncer == false
+                {
+                    self.outputDebouncer = true;
+                }
             }
         }
 
