@@ -209,7 +209,7 @@ impl Machine
         let sensNum = baseline + change;
         //This was used in testing to make sure this function worked, currently hovers around baseline and changes within the range
         //of half of variance so that the data isnt bouncing directly from high end to low end
-        //println!("Temperature: {}", sensNum);
+        //println!("Temperature: {:.2}", sensNum);
 
         return sensNum;
     }

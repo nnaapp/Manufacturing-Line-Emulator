@@ -70,6 +70,9 @@ beltSpeed: Rate at which items move one space on the belt, in ms\
 inputID: Used for connectinb a belt to another belt, null for none,
 or conveyor belt ID to connect a belt
 
+# Connecting 
+The Discovery URL will be in the command line when the simulator is run. Copy this URL and use it to connect to the client software of choice. 
+
 # Contributors
 - nnaapp (Connor Burnett)
 - coutRun (Seth Thompson)
