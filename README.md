@@ -40,28 +40,28 @@ An example JSON is included (factory.json), but the following is a key of what e
 
 Machines is an array, each element has the following:
 
-**id**: String ID of the machine\
-**cost**: Amount of input it needs to produce\
-**throughput**: Amount of output it produces\
-**state**: "PRODUCING", "BLOCKED", "STARVED", or "FAULTED"\
-**faultChance**: 0.0 through 1.0 chance of faulting when it produces\
-**faultMessage**: String message for when the machine faults\
-**faultTimeHigh**: Highest time the machine can stay faulted for\
-**faultTimeLow**: Lowest time the machine can stay faulted for\
-**inputIDs**: Array of strings, which represent conveyor belt IDs\
-**inputBehavior**: "SPAWNER" or "DEFAULT", spawner has infinite supply\
-**inputSpeed**: Rate the machine takes input at, in ms, 0 for instant\
-**inputCapacity**: How much input the machine can hold at once\
-**processingBehavior**: "DEFAULT" only for now\
-**processingSpeed**: Rate the machine produces at, in ms, 0 for instant\
-**outputIDs**: Array of strings, which represent conveyor belt IDs\
-**outputBehavior**: "CONSUMER" or "DEFAULT", consumer has infinite space\
-**outputSpeed**: Rate the machine gives output at, in ms, 0 for instant\
-**outputCapacity**: How much output the machine can hold at once\
-**sensor**: Boolean true/false, determines if the machine has a sensor,
+**- id**: String ID of the machine\
+**- cost**: Amount of input it needs to produce\
+**- throughput**: Amount of output it produces\
+**- state**: "PRODUCING", "BLOCKED", "STARVED", or "FAULTED"\
+**- faultChance**: 0.0 through 1.0 chance of faulting when it produces\
+**- faultMessage**: String message for when the machine faults\
+**- faultTimeHigh**: Highest time the machine can stay faulted for\
+**- faultTimeLow**: Lowest time the machine can stay faulted for\
+**- inputIDs**: Array of strings, which represent conveyor belt IDs\
+**- inputBehavior**: "SPAWNER" or "DEFAULT", spawner has infinite supply\
+**- inputSpeed**: Rate the machine takes input at, in ms, 0 for instant\
+**- inputCapacity**: How much input the machine can hold at once\
+**- processingBehavior**: "DEFAULT" only for now\
+**- processingSpeed**: Rate the machine produces at, in ms, 0 for instant\
+**- outputIDs**: Array of strings, which represent conveyor belt IDs\
+**- outputBehavior**: "CONSUMER" or "DEFAULT", consumer has infinite space\
+**- outputSpeed**: Rate the machine gives output at, in ms, 0 for instant\
+**- outputCapacity**: How much output the machine can hold at once\
+**- sensor**: Boolean true/false, determines if the machine has a sensor,
 sensor is a generic fluctuating value to simulate a variety of real sensors\
-**baseline**: The "home" value of the sensor, which it fluctuates around\
-**variance**: The maximum distance the sensor can vary from the baseline
+**- baseline**: The "home" value of the sensor, which it fluctuates around\
+**- variance**: The maximum distance the sensor can vary from the baseline
 
 ## Conveyors
 
