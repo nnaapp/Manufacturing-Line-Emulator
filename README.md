@@ -12,3 +12,11 @@ and run with your preferred variant of `docker run --net=host <name>`.
 
 The discovery address of the server will be printed to console, but the IP
 will be the same as the host machine, as it runs on the host network.
+
+# Contributors
+- nnaapp (Connor Burnett)
+- coutRun (Seth Thompson)
+- MMcCready (Mary McCready)
+- rozeng (Robert Zheng)
+- Pokemon151 (Joshua Eldridge)
+- Amy McCaughan
