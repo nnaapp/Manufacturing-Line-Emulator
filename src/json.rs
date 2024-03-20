@@ -1,6 +1,4 @@
-extern crate serde_json;
-extern crate serde;
-use self::serde::Deserialize;
+use serde::Deserialize;
 
 use std::fs::File;
 use std::io::Read;

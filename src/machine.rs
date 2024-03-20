@@ -6,10 +6,6 @@ use std::cell::RefMut;
 use opcua::core::runtime;
 use rand::Rng;
 
-extern crate serde_json;
-extern crate serde;
-
-extern crate log2;
 use log2::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

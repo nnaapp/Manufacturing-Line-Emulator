@@ -1,10 +1,7 @@
-extern crate local_ip_address;
-use self::local_ip_address::local_ip;
+use local_ip_address::local_ip;
 
-extern crate opcua;
 use opcua::server::prelude::*;
 
-extern crate log2;
 use log2::*;
 
 use std::path::PathBuf;

@@ -18,13 +18,10 @@ use std::io::Write;
 use std::cell::RefCell;
 use std::cell::RefMut;
 
-extern crate rand;
 use rand::Rng;
 
-extern crate opcua;
 use opcua::server::prelude::*;
 
-extern crate log2;
 use log2::*;
 
 fn main() -> std::io::Result<()>
