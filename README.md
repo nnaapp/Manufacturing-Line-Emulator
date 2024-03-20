@@ -23,6 +23,9 @@ and run with your preferred variant of `docker run --net=host <name>`.
 The discovery address of the server will be printed to console, but the IP
 will be the same as the host machine, as it runs on the host network.
 
+# Connecting 
+The Discovery URL will be in the command line when the simulator is run. Copy this URL and use it to connect to the client software of choice. 
+
 # Contributors
 - nnaapp (Connor Burnett)
 - coutRun (Seth Thompson)
