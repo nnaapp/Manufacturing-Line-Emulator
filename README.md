@@ -28,7 +28,7 @@ will be the same as the host machine, as it runs on the host network.
 # JSON Configuration Guide
 An example JSON is included (factory.json), but the following is a key of what each field means, organized by scope.
 
-##factory
+## factory
 
 **name**: Name of the line/factory\
 **description**: Description of the line/factory\
@@ -36,7 +36,7 @@ An example JSON is included (factory.json), but the following is a key of what e
 **pollRate**: Rate at which the server polls machines in ms\
 **Runtime**: Amount of time the simulation will run for, in seconds\
 
-##Machines
+## Machines
 
 Machines is an array, each element has the following:
 
@@ -63,7 +63,7 @@ sensor is a generic fluctuating value to simulate a variety of real sensors\
 **baseline**: The "home" value of the sensor, which it fluctuates around\
 **variance**: The maximum distance the sensor can vary from the baseline
 
-##Conveyors
+## Conveyors
 
 Conveyors is an array, each element has the following:
 
