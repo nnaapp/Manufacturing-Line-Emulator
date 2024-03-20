@@ -11,7 +11,7 @@ Docker handles all local dependencies (Rust, OpenSSL)
 To build only, `cargo build --bin simulator --features build-simulator`\
 and/or `cargo build --bin wrapper --features build-wrapper`.
 
-To run or build and run, `cargo run --bin simulator --features build-simulator`\ 
+To run or build and run, `cargo run --bin simulator --features build-simulator`\
 and/or `cargo build --bin wrapper --features build-wrapper`
 
 Simulator is just the simulator command line program.
