@@ -385,6 +385,8 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
         {
             //currently iterates too much but putting it in this loop was the only way I could find to make it work alongside 
             //the baseline, variance, and sensor variables of machines
+            
+            //println!("Machine ID: {}", machine.id);   //here for debugging
             machine::Machine::sensor_Sim(machine.baseline, machine.variance);
         }
     }
