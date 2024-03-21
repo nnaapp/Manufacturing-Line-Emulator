@@ -377,45 +377,45 @@ impl Machine
         {
             return;
         }
-        
+
+        let mut stateNotProducing = false;
+
         // Check for problems on this machine, like blocked or starved
-        if !self.processingInProgress// && !self.inputWaiting && !self.outputWaiting
+    
+        // !self.processingInProgress
+        if !self.processingInProgress
         {
             // not enough input 
+            stateNotProducing = true;
+
             if self.inputInventory < self.cost && !self.inputWaiting
             {  
-                if self.state == OPCState::BLOCKED && self.inputDebouncer == true
-                {
-                    self.state = OPCState::STARVEDBLOCKED;
-                    self.inputDebouncer = false;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Starved and Blocked", self.id)
-
-                }
-                else if self.state == OPCState::PRODUCING && self.inputDebouncer == true
+                if self.state == OPCState::PRODUCING && self.inputDebouncer == true
                 {
                     self.state = OPCState::STARVED;
-                    self.inputDebouncer = false;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved.", self.id);
                 }
+                else if self.state == OPCState::BLOCKED && self.inputDebouncer == true
+                {
+                    self.state = OPCState::STARVEDBLOCKED;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved and Blocked", self.id);
+                }
                 
-                if self.inputDebouncer == false
+                if self.inputDebouncer == true
+                {
+                    self.inputDebouncer = false;
+                }
+
+                if self.inputDebouncer == false && (self.state == OPCState::PRODUCING || self.state == OPCState::BLOCKED)
                 {
                     self.inputDebouncer = true;
                 }
-
             }
             // enough input, remove starved state
             else
             {
-                if self.state == OPCState::STARVED && self.inputDebouncer == true
-                {
-                    self.state = OPCState::PRODUCING;
-                    self.inputDebouncer = false;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Back to producing state", self.id);
-                }
                 if self.state == OPCState::STARVEDBLOCKED && self.inputDebouncer == true
                 {
                     self.state = OPCState::BLOCKED;
@@ -424,7 +424,7 @@ impl Machine
                     info!("ID {}: Blocked", self.id);
                 }
 
-                if self.inputDebouncer == false
+                if self.inputDebouncer == false && self.state == OPCState::STARVEDBLOCKED
                 {
                     self.inputDebouncer = true;
                 }
@@ -433,33 +433,35 @@ impl Machine
             // check if room to output if processed
             if (self.outputInventory != 0 || self.outputInvCapacity < self.throughput) && !self.outputWaiting
             {
+                stateNotProducing = true;
                 
-                if self.state == OPCState::STARVED && self.outputDebouncer == true
-                {
-                    self.state = OPCState::STARVEDBLOCKED;
-                    self.outputDebouncer = false;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Starved and Blocked", self.id)
-
-                }
-                else if self.state == OPCState::PRODUCING && self.outputDebouncer == true
+                if self.state == OPCState::PRODUCING && self.outputDebouncer == true
                 {
                     self.state = OPCState::BLOCKED;
-                    self.outputDebouncer = false;
                     self.stateChangeCount += 1;
                     info!("ID {}: Blocked.", self.id);
                 }
+                else if self.state == OPCState::STARVED && self.outputDebouncer == true
+                {
+                    self.state = OPCState::STARVEDBLOCKED;
+                    self.stateChangeCount += 1;
+                    info!("ID {}: Starved and Blocked", self.id);
+                }
 
-                if self.outputDebouncer == false
+                if self.outputDebouncer == true
+                {
+                    self.outputDebouncer = false;
+                }
+
+                if self.outputDebouncer == false && (self.state == OPCState::PRODUCING || self.state == OPCState::STARVED)
                 {
                     self.outputDebouncer = true;
                 }
-                
-                return;
             }
             // enough output room, get out of blocked state
             else 
             {
+                //println!("ID {}: {} {}", self.id, self.state, self.outputWaiting);
                 if self.state == OPCState::STARVEDBLOCKED && self.outputDebouncer == true
                 {
                     self.state = OPCState::STARVED;
@@ -467,24 +469,16 @@ impl Machine
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved.", self.id);
                 }
-                else if self.state == OPCState::STARVED
-                {
-                    return;
-                }
-                else if self.state == OPCState::BLOCKED && self.outputDebouncer == true
-                {
-                    self.state = OPCState::PRODUCING;
-                    self.outputDebouncer = false;
-                    self.stateChangeCount += 1;
-                    info!("ID {}: Back to producing", self.id)
-                }
    
-                if self.outputDebouncer == false
+                if self.outputDebouncer == false && self.state == OPCState::STARVEDBLOCKED
                 {
                     self.outputDebouncer = true;
                 }
             }
         }
+
+        // We should not go producing
+        if stateNotProducing == true { return; }
 
         // Nothing else happened, so we must be producing (no problems on this machine)
         if self.state != OPCState::PRODUCING && self.processingDebouncer == true
@@ -500,8 +494,6 @@ impl Machine
         {
             self.processingDebouncer = true;
         }
-
-        return;
     }
     
     fn findInputSingle(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>) -> bool
@@ -609,10 +601,17 @@ impl Machine
             self.inputInProgress = true;
             self.inputClock = 0;
         }
+        else if self.outputInventory > 0 && self.findInputSingle(conveyors)
+        {
+            self.inputWaiting = true;
+        }
+        else
+        {
+            self.inputWaiting = false;
+        }
 
         if !self.inputInProgress 
         { 
-            self.inputWaiting = false;
             return false; 
         }
 
@@ -631,12 +630,16 @@ impl Machine
     pub fn defaultProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
     {
         if !self.processingInProgress
-            && self.inputInventory >= self.cost
-            && self.outputInventory == 0 
-            && self.outputInvCapacity >= self.throughput
         {
-            self.processingInProgress = true;
-            self.processingClock = 0;
+            if self.inputInventory >= self.cost && self.outputInventory == 0 && self.outputInvCapacity >= self.throughput
+            { 
+                self.processingInProgress = true;
+                self.processingClock = 0;
+            }
+            else
+            {
+                self.processingInProgress = false;
+            }
         }
 
         if !self.processingInProgress { return false; }
