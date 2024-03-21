@@ -2,7 +2,7 @@
   "factory": {
     "name": "N/A",
     "description": "A simple manufacturing line for product assembly",
-    "simSpeed": 2.0,
+    "simSpeed": 1.0,
     "pollRate": 100,
     "Runtime": 60,
     "Machines": [

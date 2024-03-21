@@ -381,15 +381,13 @@ impl Machine
         let mut stateNotProducing = false;
 
         // Check for problems on this machine, like blocked or starved
-    
-        // !self.processingInProgress
         if !self.processingInProgress
         {
             // not enough input 
-            stateNotProducing = true;
-
             if self.inputInventory < self.cost && !self.inputWaiting
             {  
+                stateNotProducing = true;
+
                 if self.state == OPCState::PRODUCING && self.inputDebouncer == true
                 {
                     self.state = OPCState::STARVED;
