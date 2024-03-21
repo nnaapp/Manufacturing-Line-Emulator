@@ -11,10 +11,32 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Machine exploded.",
-          "faultTimeHigh": 20.0,
-          "faultTimeLow": 1.0,
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.05,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.1,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.15,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            }
+          ],
           "inputIDs": [
           ], 
           "inputBehavior": "SPAWNER", 
@@ -38,10 +60,32 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
-          "faultTimeHigh": 10.0,
-          "faultTimeLow": 1.0,
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.05,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.1,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.15,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            }
+          ],
           "inputIDs": [
             "MiddleBelt-to1"
           ], 
@@ -66,10 +110,32 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
-          "faultTimeHigh": 10.0,
-          "faultTimeLow": 1.0,
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.05,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.1,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.15,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            }
+          ],
           "inputIDs": [
             "belt-0to2"
           ], 
@@ -93,10 +159,32 @@
           "cost": 1,
           "throughput": 1,
           "state": "PRODUCING",
-          "faultChance": 0.0,
-          "faultMessage": "Default Fault Code.",
-          "faultTimeHigh": 10.0,
-          "faultTimeLow": 1.0,
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.05,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.1,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            },
+            {
+              "faultChance": 0.15,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHigh": 10.0,
+              "faultTimeLow": 1.0
+            }
+          ],
           "inputIDs": [
             "belt-1to3",
             "belt-2to3"

@@ -203,15 +203,20 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
         }
         
         let id = String::from(machine.id);
+
+        let mut machineFaults = Vec::<Fault>::new();
+        for fault in machine.faults
+        {
+            machineFaults.push(Fault { faultChance: fault.faultChance, faultMessage: fault.faultMessage, 
+                    faultTimeHigh: fault.faultTimeHigh, faultTimeLow: fault.faultTimeLow });
+        }
+        
         let mut newMachine = Machine::new(
             id.clone(),
             machine.cost,
             machine.throughput,
             state,
-            machine.faultChance,
-            machine.faultMessage,
-            machine.faultTimeHigh * 1000.0 * 1000.0, // seconds to microseconds
-            machine.faultTimeLow * 1000.0 * 1000.0, // seconds to microseconds
+            machineFaults,
             machine.processingSpeed * 1000, // milliseconds to microseconds
             machine.inputSpeed * 1000, // milliseconds to microseconds
             machine.inputCapacity,
@@ -314,11 +319,16 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
 
             let faultMsgVarName = "fault-message";
             let faultMsgNodeID = NodeId::new(ns, format!("{machineID}-fault-msg"));
+            let mut faultMessage = String::from("");
+            if machines[i].currentFault.is_some()
+            {
+                faultMessage = machines[i].currentFault.clone().expect("Fault does not exist, somehow.").faultMessage;
+            }
             variables.push(
                 Variable::new(&faultMsgNodeID,
                 faultMsgVarName,
                 faultMsgVarName,
-                machines[i].faultMessage.clone()));
+                faultMessage));
             nodeIDs.insert(format!("{machineID}-fault-msg"), faultMsgNodeID);
 
             let producedCountVarName = "produced-count";
@@ -370,7 +380,12 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
         addressSpace.set_variable_value(stateNodeID, machine.state.to_string(), &now, &now);
 
         let faultMsgNodeID = nodeIDs.get(&format!("{machineID}-fault-msg")).expect("NodeId ceased to exist.");
-        addressSpace.set_variable_value(faultMsgNodeID, machine.faultMessage.clone(), &now, &now);
+        let mut faultMessage = String::from("");
+        if machine.currentFault.is_some()
+        {
+            faultMessage = machine.currentFault.clone().expect("Fault does not exist, somehow.").faultMessage;
+        }
+        addressSpace.set_variable_value(faultMsgNodeID, faultMessage, &now, &now);
 
         let producedCountNodeID = nodeIDs.get(&format!("{machineID}-produced-count")).expect("NodeId ceased to exist.");
         addressSpace.set_variable_value(producedCountNodeID, machine.producedCount as u64, &now, &now);
