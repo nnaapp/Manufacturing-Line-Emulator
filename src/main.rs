@@ -358,7 +358,7 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
                 machines[i].outputInventory as u64));
             nodeIDs.insert(format!("{machineID}-output-inventory"), outputInventoryNodeID);
 
-            if machine.sensor == true 
+            if machines[i].sensor == true 
             {
                 let sensorNodeVarName = "sensor";
                 let sensorNodeID = NodeId::new(ns, format!("{machineID}-sensor"));
@@ -366,7 +366,7 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
                     Variable::new(&sensorNodeID, 
                     sensorNodeVarName,
                     sensorNodeVarName,
-                    machine[i].baseline));
+                    machines[i].baseline));
                 nodeIDs.insert(format!("{machineID}-sensor"), sensorNodeID);
             }
             let _ = addressSpace.add_variables(variables, &machineFolderID);
