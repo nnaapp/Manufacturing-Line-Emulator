@@ -367,7 +367,7 @@ impl Machine
                 self.processingInProgress = false;
                 self.inputInProgress = false;
                 let midTimePercent = (seed % 101) as f32 / 100.0; //turn seed into percentage
-                self.faultTimeCurrent = ((fault.faultTimeHigh - fault.faultTimeLow) * midTimePercent + fault.faultTimeLow) as u128; //sets fault time to the a percent of the way between the low and high values.
+                self.faultTimeCurrent = ((fault.faultTimeHigh - fault.faultTimeLow) * midTimePercent + fault.faultTimeLow) as u128 * 1000 * 1000; //sets fault time to the a percent of the way between the low and high values.
                 self.faultClock = 0;
                 return true;
             }
