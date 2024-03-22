@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::cell::RefMut;
 
-use opcua::core::runtime;
 use rand::Rng;
 
 use log2::*;
@@ -34,8 +33,8 @@ impl fmt::Display for OPCState
 #[derive(Clone)]
 pub struct BeltItem
 {
-    pub moveClock: u128, // clock for current movement
-    pub tickSpeed: u128, // time it takes to perform a movement
+    pub moveClockUs: u128, // clock for current movement, in microseconds
+    pub tickSpeedUs: u128, // time it takes to perform a movement, microseconds
     pub isMoving: bool,
 }
 
@@ -44,17 +43,18 @@ pub struct ConveyorBelt
     pub id: String,
     pub capacity: usize,
     pub belt: Vec<Option<BeltItem>>,
-    pub beltSpeed: u128,
+    pub beltSpeedUs: u128, // time it takes to move one space on the belt, microseconds
     pub isInputIDSome: bool,
     pub inputID: Option<String>,
 }
 impl ConveyorBelt
 {
-    pub fn new(id: String, capacity: usize, beltSpeed: u128, inputID: Option<String>) -> ConveyorBelt
+    // Expects ID string, capacity of the belt, movement speed in microseconds per movement, and an Option for if the belt takes from another belt
+    pub fn new(id: String, capacity: usize, beltSpeedUs: u128, inputID: Option<String>) -> ConveyorBelt
     {
         let belt = vec![None; capacity];
         let isInputIDSome = inputID.is_some();
-        return ConveyorBelt { id, capacity, belt, beltSpeed, isInputIDSome, inputID };
+        return ConveyorBelt { id, capacity, belt, beltSpeedUs, isInputIDSome, inputID };
     }
 
     pub fn update(&mut self, inputConveyor: Option<RefMut<ConveyorBelt>>, deltaTime: u128)
@@ -82,14 +82,14 @@ impl ConveyorBelt
                 if !item.isMoving && nextItem.is_none()
                 {
                     item.isMoving = true;
-                    item.moveClock = 0;
+                    item.moveClockUs = 0;
                 }
                 else if !item.isMoving { continue; }
 
                 // Increment the item's movement clock, and continue
                 // if it is not done yet
-                item.moveClock += deltaTime;
-                if item.moveClock < item.tickSpeed { continue; }
+                item.moveClockUs += deltaTime;
+                if item.moveClockUs < item.tickSpeedUs { continue; }
 
                 // Movement is done, move the item up a place
                 item.isMoving = false;
@@ -128,7 +128,7 @@ impl ConveyorBelt
     {
         if !self.isStartSome()
         {
-            self.belt[0] = Some(BeltItem { moveClock: 0, tickSpeed: self.beltSpeed, isMoving: false });
+            self.belt[0] = Some(BeltItem { moveClockUs: 0, tickSpeedUs: self.beltSpeedUs, isMoving: false });
             return true;
         }
 
@@ -153,8 +153,8 @@ pub struct Fault
 {
     pub faultChance: f32, // percent chance for a fault
     pub faultMessage: String, // string for fault message
-    pub faultTimeHigh: f32,
-    pub faultTimeLow: f32,
+    pub faultTimeHighSec: f32, // highest time the fault can stay, in seconds
+    pub faultTimeLowSec: f32, // lowest time the fault  can stay, in seconds
 }
 
 #[derive(Clone)]
@@ -166,18 +166,18 @@ pub struct Machine
     pub state: OPCState,
     pub faults: Vec<Fault>,
     pub currentFault: Option<Fault>,
-    pub faultTimeCurrent: u128,
-    pub faultClock: u128,
+    pub faultTimeCurrentUs: u128, // time that needs to pass for the fault to end, in microseconds
+    pub faultClockUs: u128, // current time that has passed since the fault started, in microseconds
 
     pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
-    pub processingClock: u128, // deltaTime is in milliseconds
-    pub processingTickSpeed: u128, // tickSpeed is in milliseconds, number of milliseconds between ticks
+    pub processingClockUs: u128, // change in time since the processing started, in microseconds
+    pub processingTickSpeedUs: u128, // how much time processing takes, in microseconds
     pub processingInProgress: bool,
     pub processingDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
 
     pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
-    pub inputClock: u128,
-    pub inputTickSpeed: u128, // tick for pulling input into inputInventory
+    pub inputClockUs: u128, // change in time since input started, in microseconds
+    pub inputTickSpeedUs: u128, // how much time input takes, in microseconds
     pub inputInProgress: bool,
     pub inputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub inputWaiting: bool, // is there room for input, and input to be taken?
@@ -187,8 +187,8 @@ pub struct Machine
     pub nextInput: usize, // the input lane to start checking from 
 
     pub outputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>,
-    pub outputClock: u128, 
-    pub outputTickSpeed: u128, // tick for outputting 
+    pub outputClockUs: u128, // change in time since output started, in microseconds
+    pub outputTickSpeedUs: u128, // how much time output takes, in microseconds
     pub outputInProgress: bool,
     pub outputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
     pub outputWaiting: bool, // is there output in the machine, and room to spit it out?
@@ -222,8 +222,8 @@ impl Machine
     }
 
     pub fn new(id: String, cost: usize, throughput: usize, state: OPCState, faults: Vec<Fault>, 
-            processingTickSpeed: u128, inputTickSpeed: u128, inputInvCapacity: usize,
-            outputTickSpeed: u128, outputInvCapacity: usize, sensor: bool, baseline: f64, variance: f64) -> Self
+            processingTickSpeedUs: u128, inputTickSpeedUs: u128, inputInvCapacity: usize,
+            outputTickSpeedUs: u128, outputInvCapacity: usize, sensor: bool, baseline: f64, variance: f64) -> Self
     {
         let inIDs = Vec::<String>::new();
         let outIDs = Vec::<String>::new();
@@ -235,18 +235,18 @@ impl Machine
             state,
             faults,
             currentFault: None,
-            faultTimeCurrent: 0,
-            faultClock: 0,
+            faultTimeCurrentUs: 0,
+            faultClockUs: 0,
 
             processingBehavior: None,
-            processingClock: 0,
-            processingTickSpeed,
+            processingClockUs: 0,
+            processingTickSpeedUs,
             processingInProgress: false,
             processingDebouncer: false,
             
             inputBehavior: None,
-            inputClock: 0,
-            inputTickSpeed,
+            inputClockUs: 0,
+            inputTickSpeedUs,
             inputInProgress: false,
             inputDebouncer: false,
             inputWaiting: false,
@@ -256,8 +256,8 @@ impl Machine
             nextInput: 0,
             
             outputBehavior: None,
-            outputClock: 0,
-            outputTickSpeed,
+            outputClockUs: 0,
+            outputTickSpeedUs,
             outputInProgress: false,
             outputDebouncer: false,
             outputWaiting: false,
@@ -344,8 +344,8 @@ impl Machine
     fn faulted(&mut self, deltaTime: u128)
     {
         // println!("ID {}: {}", self.id, self.faultMessage); //now prints the fault message from JSON
-        self.faultClock += deltaTime;
-        if self.faultClock < self.faultTimeCurrent 
+        self.faultClockUs += deltaTime;
+        if self.faultClockUs < self.faultTimeCurrentUs 
         {
             return;
         }
@@ -367,8 +367,8 @@ impl Machine
                 self.processingInProgress = false;
                 self.inputInProgress = false;
                 let midTimePercent = (seed % 101) as f32 / 100.0; //turn seed into percentage
-                self.faultTimeCurrent = ((fault.faultTimeHigh - fault.faultTimeLow) * midTimePercent + fault.faultTimeLow) as u128; //sets fault time to the a percent of the way between the low and high values.
-                self.faultClock = 0;
+                self.faultTimeCurrentUs = ((fault.faultTimeHighSec - fault.faultTimeLowSec) * midTimePercent + fault.faultTimeLowSec) as u128; //sets fault time to the a percent of the way between the low and high values.
+                self.faultClockUs = 0;
                 return true;
             }
         }
@@ -555,7 +555,7 @@ impl Machine
             // Set the input to be in progress
             self.inputWaiting = true;
             self.inputInProgress = true;
-            self.inputClock = 0;
+            self.inputClockUs = 0;
         }
 
         if !self.inputInProgress 
@@ -564,9 +564,9 @@ impl Machine
             return false; 
         }
 
-        if self.inputClock < self.inputTickSpeed
+        if self.inputClockUs < self.inputTickSpeedUs
         {
-            self.inputClock += deltaTime;
+            self.inputClockUs += deltaTime;
             return false;
         }
 
@@ -601,7 +601,7 @@ impl Machine
             // Set the input to be in progress
             self.inputWaiting = true;
             self.inputInProgress = true;
-            self.inputClock = 0;
+            self.inputClockUs = 0;
         }
         else if self.outputInventory > 0 && self.findInputSingle(conveyors)
         {
@@ -617,9 +617,9 @@ impl Machine
             return false; 
         }
 
-        if self.inputClock < self.inputTickSpeed
+        if self.inputClockUs < self.inputTickSpeedUs
         {
-            self.inputClock += deltaTime;
+            self.inputClockUs += deltaTime;
             return false;
         }
 
@@ -636,7 +636,7 @@ impl Machine
             if self.inputInventory >= self.cost && self.outputInventory == 0 && self.outputInvCapacity >= self.throughput
             { 
                 self.processingInProgress = true;
-                self.processingClock = 0;
+                self.processingClockUs = 0;
             }
             else
             {
@@ -646,9 +646,9 @@ impl Machine
 
         if !self.processingInProgress { return false; }
 
-        if self.processingClock < self.processingTickSpeed
+        if self.processingClockUs < self.processingTickSpeedUs
         {
-            self.processingClock += deltaTime;
+            self.processingClockUs += deltaTime;
             return false;
         }
 
@@ -681,7 +681,7 @@ impl Machine
             // self.outputInventory -= 1;
             self.outputWaiting = true;
             self.outputInProgress = true;
-            self.outputClock = 0;
+            self.outputClockUs = 0;
         }
 
         if !self.outputInProgress 
@@ -690,9 +690,9 @@ impl Machine
             return false; 
         }
 
-        if self.outputClock < self.outputTickSpeed
+        if self.outputClockUs < self.outputTickSpeedUs
         {
-            self.outputClock += deltaTime;
+            self.outputClockUs += deltaTime;
             return false;
         }
 
@@ -720,7 +720,7 @@ impl Machine
         {
             self.outputWaiting = true;
             self.outputInProgress = true;
-            self.outputClock = 0;
+            self.outputClockUs = 0;
         }
 
         if !self.outputInProgress 
@@ -729,9 +729,9 @@ impl Machine
             return false; 
         }
 
-        if self.outputClock < self.outputTickSpeed
+        if self.outputClockUs < self.outputTickSpeedUs
         {
-            self.outputClock += deltaTime;
+            self.outputClockUs += deltaTime;
             return false;
         }
 

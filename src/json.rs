@@ -13,17 +13,17 @@ pub struct JSONMachine {
     pub faults: Vec<JSONFault>,
     pub inputIDs: Vec<String>,
     pub inputBehavior: String,
-    pub inputSpeed: u128, // ms
+    pub inputSpeedMs: u128, // ms
     pub inputCapacity: usize,
     pub processingBehavior: String,
-    pub processingSpeed: u128,
+    pub processingSpeedMs: u128,
     pub outputIDs: Vec<String>,
     pub outputBehavior: String,
-    pub outputSpeed: u128,
+    pub outputSpeedMs: u128,
     pub outputCapacity: usize,
     pub sensor: bool,
-    pub baseline: f64, 
-    pub variance: f64,    
+    pub sensorBaseline: f64, 
+    pub sensorVariance: f64,    
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -31,15 +31,15 @@ pub struct JSONFault
 {
     pub faultChance: f32, // percent chance for a fault
     pub faultMessage: String, // string for fault message
-    pub faultTimeHigh: f32,
-    pub faultTimeLow: f32,
+    pub faultTimeHighSec: f32,
+    pub faultTimeLowSec: f32,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct JSONConveyor {
     pub id: String,
     pub capacity: usize,
-    pub beltSpeed: u128,
+    pub beltSpeedMs: u128,
     pub inputID: Option<String>,
 }
 
@@ -48,8 +48,8 @@ pub struct JSONFactory {
     pub name: String,
     pub description: String,
     pub simSpeed: f64,
-    pub pollRate: u128,
-    pub Runtime: u128,
+    pub pollRateMs: u128,
+    pub RuntimeSec: u128,
     pub Machines: Vec<JSONMachine>,
     pub Conveyors: Vec<JSONConveyor>,
 }

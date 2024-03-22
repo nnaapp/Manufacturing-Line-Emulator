@@ -47,12 +47,12 @@ fn main() -> std::io::Result<()>
 
     //Simulation speed
     let simSpeed: f64 = factoryData.4;
-    // Server poll rate in milliseconds
-    let pollRate = factoryData.5;
-    let mut pollDeltaTime = 0; // time passed since last poll 
+    // Server poll rate in microseconds
+    let pollRateUs = factoryData.5;
+    let mut pollDeltaTimeUs = 0; // microseconds passed since last poll 
 
-    let runtime = factoryData.6;  // milliseconds needed to pass to stop
-    let mut timePassed: u128 = 0; // milliseconds passed 
+    let runtimeUs = factoryData.6;  // microseconds needed to pass to stop
+    let mut timePassedUs: u128 = 0; // microseconds passed 
 
     // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
     let serverData = serverSetup(machines.clone(), "MyLine");
@@ -79,7 +79,7 @@ fn main() -> std::io::Result<()>
     let mut dtSum: u128 = 0;
     let mut dtAmount: u128 = 0;
 
-    while timePassed < runtime
+    while timePassedUs < runtimeUs
     {   
         // Find deltatime between loop iterations
         start = SystemTime::now();
@@ -90,7 +90,7 @@ fn main() -> std::io::Result<()>
         dtSum += deltaTime;
         dtAmount += 1;
         
-        timePassed += deltaTime;
+        timePassedUs += deltaTime;
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
@@ -122,10 +122,10 @@ fn main() -> std::io::Result<()>
 
 
         // Check if the server should poll for updates
-        pollDeltaTime += deltaTime;
-        if pollDeltaTime >= pollRate
+        pollDeltaTimeUs += deltaTime;
+        if pollDeltaTimeUs >= pollRateUs
         {
-            pollDeltaTime -= pollRate;
+            pollDeltaTimeUs -= pollRateUs;
             let mut addressSpace = addressSpace.write();
             serverPoll(&mut addressSpace, &machines, &nodeIDs, &machineIDs);
         }
@@ -140,7 +140,7 @@ fn main() -> std::io::Result<()>
     for id in machineIDs.iter()
     {
         let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
-        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtime as f64 / machine.processingTickSpeed as f64));
+        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtimeUs as f64 / machine.processingTickSpeedUs as f64));
 
         writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").borrow().id)?;
         writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
@@ -175,14 +175,14 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
     info!("Factory Name: {}", data.factory.name);
     info!("Description: {}", data.factory.description);
     info!("simSpeed: {} ", data.factory.simSpeed);
-    info!("pollRate: {} milliseconds", data.factory.pollRate);
-    info!("Runtime: {} seconds", data.factory.Runtime);
+    info!("pollRate: {} milliseconds", data.factory.pollRateMs);
+    info!("Runtime: {} seconds", data.factory.RuntimeSec);
     info!("");
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 
-    let factoryPollRate = data.factory.pollRate * 1000; // milliseconds to microseconds
-    let factoryRuntime = data.factory.Runtime * 1000 * 1000; // seconds to microseconds
+    let factoryPollRateUs = data.factory.pollRateMs * 1000; // milliseconds to microseconds
+    let factoryRuntimeUs = data.factory.RuntimeSec * 1000 * 1000; // seconds to microseconds
 
     let mut machines = HashMap::<String, RefCell<Machine>>::new();
     let mut conveyors = HashMap::<String, RefCell<ConveyorBelt>>::new();
@@ -208,7 +208,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
         for fault in machine.faults
         {
             machineFaults.push(Fault { faultChance: fault.faultChance, faultMessage: fault.faultMessage, 
-                    faultTimeHigh: fault.faultTimeHigh, faultTimeLow: fault.faultTimeLow });
+                    faultTimeHighSec: fault.faultTimeHighSec, faultTimeLowSec: fault.faultTimeLowSec });
         }
         
         let mut newMachine = Machine::new(
@@ -217,14 +217,14 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
             machine.throughput,
             state,
             machineFaults,
-            machine.processingSpeed * 1000, // milliseconds to microseconds
-            machine.inputSpeed * 1000, // milliseconds to microseconds
+            machine.processingSpeedMs * 1000, // milliseconds to microseconds
+            machine.inputSpeedMs * 1000, // milliseconds to microseconds
             machine.inputCapacity,
-            machine.outputSpeed * 1000, // milliseconds to microseconds
+            machine.outputSpeedMs * 1000, // milliseconds to microseconds
             machine.outputCapacity,
             machine.sensor,
-            machine.baseline,
-            machine.variance,
+            machine.sensorBaseline,
+            machine.sensorVariance,
         );
         newMachine.inputIDs = machine.inputIDs;
         newMachine.outputIDs = machine.outputIDs;
@@ -263,11 +263,11 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
     for conveyor in data.factory.Conveyors
     {
         let id = String::from(conveyor.id);
-        conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeed * 1000, conveyor.inputID)));
+        conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeedMs * 1000, conveyor.inputID)));
         conveyorIDs.push(id.clone());
     }
 
-    return (machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRate, factoryRuntime);
+    return (machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRateUs, factoryRuntimeUs);
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
@@ -357,18 +357,7 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
                 outputInventoryVarName,
                 machines[i].outputInventory as u64));
             nodeIDs.insert(format!("{machineID}-output-inventory"), outputInventoryNodeID);
-
-            if machines[i].sensor == true 
-            {
-                let sensorNodeVarName = "sensor";
-                let sensorNodeID = NodeId::new(ns, format!("{machineID}-sensor"));
-                variables.push(
-                    Variable::new(&sensorNodeID, 
-                    sensorNodeVarName,
-                    sensorNodeVarName,
-                    machines[i].baseline));
-                nodeIDs.insert(format!("{machineID}-sensor"), sensorNodeID);
-            }
+            
             let _ = addressSpace.add_variables(variables, &machineFolderID);
         }
     }
@@ -413,9 +402,7 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
             //the baseline, variance, and sensor variables of machines
             
             //println!("Machine ID: {}", machine.id);   //here for debugging
-            let sensorVal = machine::Machine::sensor_Sim(machine.baseline, machine.variance);
-            let sensorNodeID = nodeIDs.get(&format!("{machineID}-sensor")).expect("NodeId ceased to exist.");
-            addressSpace.set_variable_value(sensorNodeID, sensorVal as u64, &now, &now);
+            machine::Machine::sensor_Sim(machine.baseline, machine.variance);
         }
     }
 }
