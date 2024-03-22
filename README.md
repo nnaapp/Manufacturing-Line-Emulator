@@ -28,7 +28,7 @@ will be the same as the host machine, as it runs on the host network.
 # JSON Configuration Guide
 An example JSON is included (factory.json), but the following is a key of what each field means, organized by scope.
 
-## factory
+## Factory
 
 - **name**: Name of the line/factory
 - **description**: Description of the line/factory
