@@ -49,9 +49,9 @@ pub struct JSONFactory {
     pub description: String,
     pub simSpeed: f64,
     pub pollRateMs: u128,
-    pub RuntimeSec: u128,
-    pub Machines: Vec<JSONMachine>,
-    pub Conveyors: Vec<JSONConveyor>,
+    pub runtimeSec: u128,
+    pub machines: Vec<JSONMachine>,
+    pub conveyors: Vec<JSONConveyor>,
 }
 
 #[derive(Debug, Deserialize)]

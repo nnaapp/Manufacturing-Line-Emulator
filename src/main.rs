@@ -174,22 +174,21 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
 
     info!("Factory Name: {}", data.factory.name);
     info!("Description: {}", data.factory.description);
-    info!("simSpeed: {} ", data.factory.simSpeed);
-    info!("pollRate: {} milliseconds", data.factory.pollRateMs);
-    info!("Runtime: {} seconds", data.factory.RuntimeSec);
-    info!("");
+    info!("Simulation Speed: {} ", data.factory.simSpeed);
+    info!("Poll Rate: {} milliseconds", data.factory.pollRateMs);
+    info!("Runtime: {} seconds", data.factory.runtimeSec);
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 
     let factoryPollRateUs = data.factory.pollRateMs * 1000; // milliseconds to microseconds
-    let factoryRuntimeUs = data.factory.RuntimeSec * 1000 * 1000; // seconds to microseconds
+    let factoryRuntimeUs = data.factory.runtimeSec * 1000 * 1000; // seconds to microseconds
 
     let mut machines = HashMap::<String, RefCell<Machine>>::new();
     let mut conveyors = HashMap::<String, RefCell<ConveyorBelt>>::new();
     let mut machineIDs = Vec::<String>::new(); // Track all IDs, this makes iterating over the hashmap easier in the future
     let mut conveyorIDs = Vec::<String>::new();
 
-    for machine in data.factory.Machines 
+    for machine in data.factory.machines 
     {
         let mut state = OPCState::PRODUCING;
 
@@ -260,7 +259,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
         machines.insert(id.clone(), RefCell::new(newMachine));
     }
 
-    for conveyor in data.factory.Conveyors
+    for conveyor in data.factory.conveyors
     {
         let id = String::from(conveyor.id);
         conveyors.insert(id.clone(), RefCell::new(ConveyorBelt::new(id.clone(), conveyor.capacity, conveyor.beltSpeedMs * 1000, conveyor.inputID)));
