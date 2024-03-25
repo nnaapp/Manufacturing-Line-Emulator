@@ -356,7 +356,19 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
                 outputInventoryVarName,
                 machines[i].outputInventory as u64));
             nodeIDs.insert(format!("{machineID}-output-inventory"), outputInventoryNodeID);
-            
+
+            if machines[i].sensor == true
+            {
+                let sensorVarName = "sensor";
+                let sensorNodeID = NodeId::new(ns, format!("{machineID}-sensor"));
+                variables.push(
+                    Variable::new(&sensorNodeID, 
+                    sensorVarName,
+                    sensorVarName,
+                    machines[i].baseline as f64));
+                nodeIDs.insert(format!("{machineID}-sensor"), sensorNodeID);
+            }
+
             let _ = addressSpace.add_variables(variables, &machineFolderID);
         }
     }
@@ -401,7 +413,9 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
             //the baseline, variance, and sensor variables of machines
             
             //println!("Machine ID: {}", machine.id);   //here for debugging
-            machine::Machine::sensor_Sim(machine.baseline, machine.variance);
+            let sensorVal = machine::Machine::sensor_Sim(machine.baseline, machine.variance);
+            let sensorNodeID = nodeIDs.get(&format!("{machineID}-sensor")).expect("NodeId ceased to exist.");
+            addressSpace.set_variable_value(sensorNodeID, sensorVal as f64, &now, &now);
         }
     }
 }
