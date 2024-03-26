@@ -169,7 +169,7 @@ pub struct Machine
     pub faultTimeCurrentUs: u128, // time that needs to pass for the fault to end, in microseconds
     pub faultClockUs: u128, // current time that has passed since the fault started, in microseconds
 
-    pub processingBehavior: Option<fn(&mut Machine, u128, i32) -> bool>, 
+    pub processingBehavior: Option<fn(&mut Machine, u128) -> bool>, 
     pub processingClockUs: u128, // change in time since the processing started, in microseconds
     pub processingTickSpeedUs: u128, // how much time processing takes, in microseconds
     pub processingInProgress: bool,
@@ -280,7 +280,7 @@ impl Machine
         return newMachine;
     }
 
-    pub fn update(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128, seed: i32)
+    pub fn update(&mut self, conveyors: &mut HashMap<String, RefCell<ConveyorBelt>>, deltaTime: u128)
     {
         {
             if self.state != OPCState::FAULTED
@@ -313,7 +313,7 @@ impl Machine
                     return;
                 }
                 let processingBehavior = self.processingBehavior.unwrap();
-                processingBehavior(self, deltaTime, seed);
+                processingBehavior(self, deltaTime);
             }
         }
 
@@ -356,20 +356,23 @@ impl Machine
         info!("ID {} : Has been fixed: Producing Again.", self.id);
     }
 
-    fn checkIfShouldFault(&mut self, seed: i32) -> bool
+    fn checkIfShouldFault(&mut self) -> bool
     {
         for fault in &self.faults {
-            // Modulo seed by 1000, convert to float, convert to % (out of 1000), and compare to fail chance
-            if (seed % 1000) as f32 / 1000.0 < fault.faultChance
+            // Generate random value between 0 and 1000, used for determining if a fault happens
+            let faultSeed = rand::thread_rng().gen_range(0..1001);
+            if faultSeed as f32 / 1000.0 < fault.faultChance
             {
                 self.currentFault = Some(fault.clone());
-                // Debug logging to show the seed when the machine faults
+                // Debug logging to show a message when the machine faults
                 debug!("ID {}: {}", self.id, fault.faultMessage); // TODO: more than one fault type
                 self.state = OPCState::FAULTED;
                 self.stateChangeCount += 1;
                 self.processingInProgress = false;
                 self.inputInProgress = false;
-                let midTimePercent = (seed % 101) as f32 / 100.0; //turn seed into percentage
+                // Generate another random value, used for determining how long the fault will stay
+                let timeSeed = rand::thread_rng().gen_range(0..101);
+                let midTimePercent = timeSeed as f32 / 100.0; //turn seed into percentage
                 self.faultTimeCurrentUs = ((fault.faultTimeHighSec - fault.faultTimeLowSec) * midTimePercent + fault.faultTimeLowSec) as u128 * 1000 * 1000; //sets fault time to the a percent of the way between the low and high values.
                 self.faultClockUs = 0;
                 return true;
@@ -632,7 +635,7 @@ impl Machine
     }
 
     // Processess only if the output inventory is empty
-    pub fn defaultProcessing(&mut self, deltaTime: u128, seed: i32) -> bool
+    pub fn defaultProcessing(&mut self, deltaTime: u128) -> bool
     {
         if !self.processingInProgress
         {
@@ -655,7 +658,7 @@ impl Machine
             return false;
         }
 
-        if self.checkIfShouldFault(seed) { return false; }
+        if self.checkIfShouldFault() { return false; }
         
         // process 
         self.inputInventory -= self.cost;

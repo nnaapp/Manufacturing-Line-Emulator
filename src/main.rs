@@ -18,8 +18,6 @@ use std::io::Write;
 use std::cell::RefCell;
 use std::cell::RefMut;
 
-use rand::Rng;
-
 use opcua::server::prelude::*;
 
 use log2::*;
@@ -64,9 +62,6 @@ fn main() -> std::io::Result<()>
         server.run();
     });
     
-    // Master random number generator, which is passed to machines to use for faults
-    let mut rng = rand::thread_rng();
-
     // Start represents current SystemTime, 
     // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
     // deltaTime represents milliseconds time between previous and current iteration of loop.
@@ -101,7 +96,7 @@ fn main() -> std::io::Result<()>
                     .expect(format!("Machine {id} does not exist.").as_str())
                     .borrow_mut()
                     .get_mut()
-                    .update(&mut conveyors, deltaTime, rng.gen_range(0..=std::i32::MAX));
+                    .update(&mut conveyors, deltaTime);
         }
         // update all conveyor belts
         for id in conveyorIDs.iter()
@@ -229,7 +224,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
         newMachine.outputIDs = machine.outputIDs;
 
         let mut inputBehavior: fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool = Machine::singleInput;
-        let mut processingBehavior: fn(&mut Machine, u128, i32) -> bool = Machine::defaultProcessing;
+        let mut processingBehavior: fn(&mut Machine, u128) -> bool = Machine::defaultProcessing;
         let mut outputBehavior: fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool = Machine::singleOutput;
         match machine.inputBehavior.to_lowercase().as_str()
         {

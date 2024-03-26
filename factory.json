@@ -13,28 +13,28 @@
           "state": "PRODUCING",
           "faults": [
             {
-              "faultChance": 0.01,
+              "faultChance": 0.02,
               "faultMessage": "Part got crushed.",
-              "faultTimeHighSec": 30.0,
-              "faultTimeLowSec": 20.0
+              "faultTimeHighSec": 8.0,
+              "faultTimeLowSec": 2.0
+            },
+            {
+              "faultChance": 0.001,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHighSec": 9999.0,
+              "faultTimeLowSec": 9999.0
+            },
+            {
+              "faultChance": 0.03,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHighSec": 5.0,
+              "faultTimeLowSec": 1.0
             },
             {
               "faultChance": 0.005,
-              "faultMessage": "Machine exploded.",
-              "faultTimeHighSec": 120.0,
-              "faultTimeLowSec": 30.0
-            },
-            {
-              "faultChance": 0.02,
-              "faultMessage": "Machine is jammed.",
-              "faultTimeHighSec": 10.0,
-              "faultTimeLowSec": 1.0
-            },
-            {
-              "faultChance": 0.0,
               "faultMessage": "Machine part is broken.",
-              "faultTimeHighSec": 10.0,
-              "faultTimeLowSec": 1.0
+              "faultTimeHighSec": 240.0,
+              "faultTimeLowSec": 30.0
             }
           ],
           "inputIDs": [
