@@ -14,13 +14,17 @@ and/or `cargo build --bin wrapper --features build-wrapper`.
 To run or build and run, `cargo run --bin simulator --features build-simulator`\
 and/or `cargo build --bin wrapper --features build-wrapper`
 
+<b>Currently the location of the JSON config is hard-coded as /home/data/factory.json,
+this will be overhauled soon, but this means it can only be run through docker at the moment,
+and the config must be project_directory/data/factory.json!</b>
+
 Simulator is just the simulator command line program.
 
 Wrapper is a WIP GUI wrapper that will let you start/stop the simulator, and specify config file location.
 
 # Running with Docker
 Run `docker build -t <name> .` in the root directory,
-and run with your preferred variant of `docker run --net=host <name>`.
+and run with your preferred variant of `docker run --net=host --mount type=bind,source="$(pwd)"/data,target=/home/data -it container_name`.
 
 The discovery address of the server will be printed to console, but the IP
 will be the same as the host machine, as it runs on the host network.

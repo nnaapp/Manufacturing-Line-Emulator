@@ -10,9 +10,10 @@ mod server;
 use server::*;
 
 use std::borrow::BorrowMut;
-use std::thread;
+// use std::thread;
 use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
+use std::thread;
 use std::fs::File;
 use std::io::Write;
 use std::cell::RefCell;
@@ -148,22 +149,10 @@ fn main() -> std::io::Result<()>
     Ok(())
 }
 
-// fn log2Test()
-// {
-//     // Start log2
-//     let _log2 = log2::start();
-
-//     trace!("Trace Test");
-//     debug!("Debug Test");
-//     info!("Info Test");
-//     warn!("Warn Test");
-//     error!("Error Test");
-// }
-
 fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>, 
                         HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)
 {
-    let file_path = "factory.json";
+    let file_path = "/home/data/factory.json";
     let json_data = read_json_file(file_path);
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
@@ -211,6 +200,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
             machine.throughput,
             state,
             machineFaults,
+            data.factory.debounceRateInPolls,
             machine.processingSpeedMs * 1000, // milliseconds to microseconds
             machine.inputSpeedMs * 1000, // milliseconds to microseconds
             machine.inputCapacity,

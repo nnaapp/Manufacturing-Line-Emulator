@@ -168,18 +168,19 @@ pub struct Machine
     pub currentFault: Option<Fault>,
     pub faultTimeCurrentUs: u128, // time that needs to pass for the fault to end, in microseconds
     pub faultClockUs: u128, // current time that has passed since the fault started, in microseconds
+    pub debounceRate: i32, // amount of times a state change must be true consecutively in order to actually change states
 
     pub processingBehavior: Option<fn(&mut Machine, u128) -> bool>, 
     pub processingClockUs: u128, // change in time since the processing started, in microseconds
     pub processingTickSpeedUs: u128, // how much time processing takes, in microseconds
     pub processingInProgress: bool,
-    pub processingDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
+    pub processingDebouncer: i32, // Debouncing mechanism, needs to count to debounceRate to change states
 
     pub inputBehavior: Option<fn(&mut Machine, &mut HashMap<String, RefCell<ConveyorBelt>>, u128) -> bool>, // Function pointer that can also be None, used to define behavior
     pub inputClockUs: u128, // change in time since input started, in microseconds
     pub inputTickSpeedUs: u128, // how much time input takes, in microseconds
     pub inputInProgress: bool,
-    pub inputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
+    pub inputDebouncer: i32, // Debouncing mechanism, needs to count to debounceRate to change states
     pub inputWaiting: bool, // is there room for input, and input to be taken?
     pub inputIDs: Vec<String>, // Vector of machine/lane IDs for input, used as indices
     pub inputInventory: usize, // storage place in machine before process 
@@ -190,7 +191,7 @@ pub struct Machine
     pub outputClockUs: u128, // change in time since output started, in microseconds
     pub outputTickSpeedUs: u128, // how much time output takes, in microseconds
     pub outputInProgress: bool,
-    pub outputDebouncer: bool, // Debouncing mechanism, needs to be true TWICE to change state
+    pub outputDebouncer: i32, // Debouncing mechanism, needs to count to debounceRate to change states
     pub outputWaiting: bool, // is there output in the machine, and room to spit it out?
     pub outputIDs: Vec<String>,
     pub outputInventory: usize, // represents num of items in it 
@@ -221,7 +222,7 @@ impl Machine
         return sensNum;
     }
 
-    pub fn new(id: String, cost: usize, throughput: usize, state: OPCState, faults: Vec<Fault>, 
+    pub fn new(id: String, cost: usize, throughput: usize, state: OPCState, faults: Vec<Fault>, debounceRate: i32, 
             processingTickSpeedUs: u128, inputTickSpeedUs: u128, inputInvCapacity: usize,
             outputTickSpeedUs: u128, outputInvCapacity: usize, sensor: bool, baseline: f64, variance: f64) -> Self
     {
@@ -237,18 +238,19 @@ impl Machine
             currentFault: None,
             faultTimeCurrentUs: 0,
             faultClockUs: 0,
+            debounceRate,
 
             processingBehavior: None,
             processingClockUs: 0,
             processingTickSpeedUs,
             processingInProgress: false,
-            processingDebouncer: false,
+            processingDebouncer: 0,
             
             inputBehavior: None,
             inputClockUs: 0,
             inputTickSpeedUs,
             inputInProgress: false,
-            inputDebouncer: false,
+            inputDebouncer: 0,
             inputWaiting: false,
             inputIDs: inIDs,
             inputInventory: 0,
@@ -259,7 +261,7 @@ impl Machine
             outputClockUs: 0,
             outputTickSpeedUs,
             outputInProgress: false,
-            outputDebouncer: false,
+            outputDebouncer: 0,
             outputWaiting: false,
             outputIDs: outIDs,
             outputInventory: 0,
@@ -398,44 +400,42 @@ impl Machine
             {  
                 stateNotProducing = true;
 
-                if self.state == OPCState::PRODUCING && self.inputDebouncer == true
+                if self.state == OPCState::PRODUCING && self.inputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVED;
+                    self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved.", self.id);
                 }
-                else if self.state == OPCState::BLOCKED && self.inputDebouncer == true
+                else if self.state == OPCState::BLOCKED && self.inputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVEDBLOCKED;
+                    self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved and Blocked", self.id);
                 }
-                
-                if self.inputDebouncer == true
+                else if self.state == OPCState::PRODUCING || self.state == OPCState::BLOCKED
                 {
-                    self.inputDebouncer = false;
-                }
-
-                if self.inputDebouncer == false && (self.state == OPCState::PRODUCING || self.state == OPCState::BLOCKED)
-                {
-                    self.inputDebouncer = true;
+                    self.inputDebouncer += 1;
                 }
             }
             // enough input, remove starved state
-            else
+            else if self.state == OPCState::STARVEDBLOCKED
             {
-                if self.state == OPCState::STARVEDBLOCKED && self.inputDebouncer == true
+                if self.inputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::BLOCKED;
-                    self.inputDebouncer = false;
+                    self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Blocked", self.id);
                 }
 
-                if self.inputDebouncer == false && self.state == OPCState::STARVEDBLOCKED
-                {
-                    self.inputDebouncer = true;
-                }
+                self.inputDebouncer += 1;
+            }
+            // No input related state should be changed, zero debouncer
+            else
+            {
+                self.inputDebouncer = 0;
             }
 
             // check if room to output if processed
@@ -443,64 +443,64 @@ impl Machine
             {
                 stateNotProducing = true;
                 
-                if self.state == OPCState::PRODUCING && self.outputDebouncer == true
+                if self.state == OPCState::PRODUCING && self.outputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::BLOCKED;
+                    self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Blocked.", self.id);
                 }
-                else if self.state == OPCState::STARVED && self.outputDebouncer == true
+                else if self.state == OPCState::STARVED && self.outputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVEDBLOCKED;
+                    self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved and Blocked", self.id);
                 }
-
-                if self.outputDebouncer == true
+                else if self.state == OPCState::PRODUCING || self.state == OPCState::STARVED
                 {
-                    self.outputDebouncer = false;
-                }
-
-                if self.outputDebouncer == false && (self.state == OPCState::PRODUCING || self.state == OPCState::STARVED)
-                {
-                    self.outputDebouncer = true;
+                    self.outputDebouncer += 1;
                 }
             }
             // enough output room, get out of blocked state
-            else 
+            else if self.state == OPCState::STARVEDBLOCKED
             {
-                //println!("ID {}: {} {}", self.id, self.state, self.outputWaiting);
-                if self.state == OPCState::STARVEDBLOCKED && self.outputDebouncer == true
+                if self.outputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVED;
-                    self.outputDebouncer = false;
+                    self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
                     info!("ID {}: Starved.", self.id);
                 }
-   
-                if self.outputDebouncer == false && self.state == OPCState::STARVEDBLOCKED
-                {
-                    self.outputDebouncer = true;
-                }
+
+               self.outputDebouncer += 1;
+            }
+            // No output related state should be changed, zero debouncer
+            else
+            {
+                self.outputDebouncer = 0;
             }
         }
 
         // We should not go producing
-        if stateNotProducing == true { return; }
+        if stateNotProducing == true 
+        { 
+            self.processingDebouncer = 0;
+            return; 
+        }
 
         // Nothing else happened, so we must be producing (no problems on this machine)
-        if self.state != OPCState::PRODUCING && self.processingDebouncer == true
+        if self.state != OPCState::PRODUCING && (self.processingDebouncer >= self.debounceRate || self.processingInProgress)
         {
             self.state = OPCState::PRODUCING;
-            self.processingDebouncer = false;
+            self.processingDebouncer = 0;
             self.stateChangeCount += 1;
             info!("ID {}: Producing.", self.id);
             return;
         }
-
-        if self.processingDebouncer == false
+        else if self.state != OPCState::PRODUCING
         {
-            self.processingDebouncer = true;
+            self.processingDebouncer += 1;
         }
     }
     
