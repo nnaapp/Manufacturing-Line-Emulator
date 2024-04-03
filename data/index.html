@@ -6,9 +6,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/darkly/bootstrap.min.css" rel="stylesheet">
     <title>Simulator Control Panel</title>
 </head>
-<body>
+<body class="bg-dark">
 
-
+    <div class="col-12 d-flex justify-content-center align-items-center mt-5">
+        <button class="col-12 col-lg-5 btn btn-success text-center" type="button" id="btnStart" data-status="start"> Start </button>
+    </div> 
 
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
@@ -16,3 +18,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>
+<script>
+
+
+// event to change start button to stop and vice versa
+    $('#btnStart').on('click',function(){
+        let strStatus = $(this).attr('data-status');
+        if(strStatus == 'start'){
+            $('#btnStart').attr('data-status','stop').text('Stop').removeClass('btn-success').addClass('btn-danger');
+            console.log('I was a start button but now stop')
+        } else {
+            $('#btnStart').attr('data-status','start').text('Start').removeClass('btn-danger').addClass('btn-success');
+        console.log('I was a stop button but now start')
+    }    
+});
+
+</script>
