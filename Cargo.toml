@@ -7,9 +7,11 @@ repository = "https://github.com/nnaapp/Manufacturing-Line-Emulator"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.81"
+actix-web = { version = "4.5.1", optional = true }
+actix-files = { version = "0.6.5", optional = true }
 eframe = { version = "0.26.2", optional = true }
 egui_extras = { version = "0.26.2", optional = true }
-futures = { version = "0.3.30", optional = true }
 local-ip-address = { version = "0.6.0", optional = true }
 log2 = { version = "0.1.11", optional = true }
 opcua = { version = "0.12.0", optional = true }
@@ -18,7 +20,7 @@ serde = { version = "1.0.196", features = ["derive"], optional = true }
 serde_json = { version = "1.0.113", optional = true }
 
 [features]
-build-simulator = ["local-ip-address", "log2", "opcua", "rand", "serde", "serde_json"]
+build-simulator = ["local-ip-address", "log2", "opcua", "rand", "serde", "serde_json", "actix-web", "actix-files"]
 build-wrapper = ["eframe", "egui_extras"]
 
 [[bin]]

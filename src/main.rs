@@ -10,28 +10,60 @@ mod server;
 use server::*;
 
 use std::borrow::BorrowMut;
-// use std::thread;
 use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
 use std::thread;
-use std::fs::File;
-use std::io::Write;
-use std::cell::RefCell;
-use std::cell::RefMut;
+use std::cell::{RefCell, RefMut};
+use std::sync::{RwLock, Arc};
 
 use opcua::server::prelude::*;
+use opcua::sync::RwLock as opcuaRwLock;
+
+use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
 
 use log2::*;
 
-fn main() -> std::io::Result<()>
+use anyhow::Result;
+
+fn main() -> Result<()>
 {
-    // Debug backtrace info
-    // env::set_var("RUST_BACKTRACE", "1");
-
-    // function for testing log2's features
     let _log2 = log2::start();
-    // log2Test();
 
+    // Ensure the simulation state is set to running, and initialize the web server for the control panel
+    simStateManager(true, Some(SimulationState::RUNNING));    
+    thread::spawn(|| {
+        let _ = webServer();
+    });
+
+    // Set up the OPC UA server and keep track of the address space (Arc<RwLock<AddressSpace>>)
+    let opcuaServer = initServer();
+    let mut addressSpace = opcuaServer.address_space();
+    thread::spawn(|| {
+        opcuaServer.run();
+    });
+
+    // Loop forever, starting the simulation if it is stopped and the state is "RUNNING"
+    // Exit if the signal is given by breaking the loop
+    loop
+    {
+        let state = simStateManager(false, None);
+        
+        if state == SimulationState::RUNNING
+        {
+            let _ = simulation(&mut addressSpace);
+        }
+        else if state == SimulationState::EXIT
+        {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+// Used to be main, this is the simulation logic that runs until the web server signals it to stop
+fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Result<()>
+{
     // Tuple of line data structures and settings
     let factoryData = factorySetup();
 
@@ -50,18 +82,9 @@ fn main() -> std::io::Result<()>
     let pollRateUs = factoryData.5;
     let mut pollDeltaTimeUs = 0; // microseconds passed since last poll 
 
-    let runtimeUs = factoryData.6;  // microseconds needed to pass to stop
-    let mut timePassedUs: u128 = 0; // microseconds passed 
-
-    // Set up the server and get a tuple containing the Server and a HashMap<usize, NodeId> of all nodes
-    let serverData = serverSetup(machines.clone(), "MyLine");
-    let server = serverData.0;
-    let addressSpace = server.address_space();
-    let nodeIDs = serverData.1;
-    // Spawn a thread for the server to run on independently
-    thread::spawn(|| {
-        server.run();
-    });
+    // Set up the server with the new machine data, and get a Hashmap<String, NodeId> of all nodes
+    // on the server
+    let nodeIDs = serverSetup(addressSpace, machines.clone(), "MyLine");
     
     // Start represents current SystemTime, 
     // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
@@ -71,22 +94,39 @@ fn main() -> std::io::Result<()>
     let mut prevTime:Duration = iterTime;
     let mut deltaTime:u128;
 
-    let mut dtPeak: u128 = 0;
-    let mut dtSum: u128 = 0;
-    let mut dtAmount: u128 = 0;
+    // let mut dtPeak: u128 = 0;
+    // let mut dtSum: u128 = 0;
+    // let mut dtAmount: u128 = 0;
 
-    while timePassedUs < runtimeUs
+    // Loop until the signal is given to stop this simulation or exit the entire program
+    // and perform the simulation logic
+    let mut pauseHappened = false;
+    while simStateManager(false, None) != SimulationState::STOP && simStateManager(false, None) != SimulationState::EXIT
     {   
+        // Just log that a pause happened and skip all of the simulating if the pause signal is set
+        if simStateManager(false, None) == SimulationState::PAUSED 
+        {
+            pauseHappened = true; 
+            continue; 
+        }
+        
         // Find deltatime between loop iterations
         start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");     
+        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");  
+        // If a pause occurred, we don't want the huge time gap between this iteration
+        // and last iteration to cause a speed up in production. Setting the two times 
+        // equal to each other mitigates that, making it like no time passed.
+        if pauseHappened
+        {
+            pauseHappened = false;
+            prevTime = iterTime;
+        }   
         deltaTime = iterTime.as_micros() - prevTime.as_micros();
 
-        if deltaTime > dtPeak { dtPeak = deltaTime; }
-        dtSum += deltaTime;
-        dtAmount += 1;
+        // if deltaTime > dtPeak { dtPeak = deltaTime; }
+        // dtSum += deltaTime;
+        // dtAmount += 1;
         
-        timePassedUs += deltaTime;
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
@@ -124,35 +164,137 @@ fn main() -> std::io::Result<()>
             pollDeltaTimeUs -= pollRateUs;
             let mut addressSpace = addressSpace.write();
             serverPoll(&mut addressSpace, &machines, &nodeIDs, &machineIDs);
+            let state = simStateManager(false, None);
         }
 
         // Log system time at the start of this iteration, for use in next iteration
         prevTime = iterTime;
     }
-    let file = File::create("log.txt")?;
-    writeln!(&file, "Avg Cycle Time: {}", dtSum / dtAmount)?;
-    writeln!(&file, "Peak Cycle Time: {}", dtPeak)?;
-    writeln!(&file, "")?;
-    for id in machineIDs.iter()
+    // TODO: make sure this works with new web controller system
+    // let file = File::create("log.txt")?;
+    // writeln!(&file, "Avg Cycle Time: {}", dtSum / dtAmount)?;
+    // writeln!(&file, "Peak Cycle Time: {}", dtPeak)?;
+    // writeln!(&file, "")?;
+    // for id in machineIDs.iter()
+    // {
+    //     let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
+    //     let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtimeUs as f64 / machine.processingTickSpeedUs as f64));
+
+    //     writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").borrow().id)?;
+    //     writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
+    //     writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
+    //     writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
+    //     writeln!(&file, "Efficiency: {}", efficiencyCount)?;
+    //     writeln!(&file, "")?;
+
+    // }
+
+    for nodeID in nodeIDs.values().cloned().collect::<Vec<NodeId>>()
     {
-        let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
-        let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtimeUs as f64 / machine.processingTickSpeedUs as f64));
-
-        writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").borrow().id)?;
-        writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
-        writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
-        writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
-        writeln!(&file, "Efficiency: {}", efficiencyCount)?;
-        writeln!(&file, "")?;
-
+        addressSpace.write().delete(&nodeID, true);
     }
+    
     Ok(())
+}
+
+// The four states for the simulation
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum SimulationState
+{
+    RUNNING, // Running as normal
+    PAUSED,  // Paused but still waiting
+    STOP,    // Full-stop the simulation
+    EXIT,    // Fully exit the program
+}
+
+// This is our solution to getting signals from our Actix HTTP server out into the simulator.
+// We could not get an object or other easy to move flag inside the service that the web page uses,
+// so we use static memory to keep track of a "master state" for the simulation, which is 
+// either get or set depending on function arguments.
+// 
+// false and None for getter, true and Some(SimulationState::StateHere) for setter 
+fn simStateManager(updateState: bool, newState: Option<SimulationState>) -> SimulationState
+{
+    static STATE: RwLock<SimulationState> = RwLock::new(SimulationState::RUNNING);
+
+    if updateState && newState.is_some()
+    {
+        *STATE.write().unwrap() = newState.unwrap();
+    }
+
+    let state = *STATE.read().ok().unwrap();
+    return state.clone();
+}
+
+// Get HTML for web page
+#[get("/")]
+async fn getPage() -> impl Responder
+{
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(include_str!("../data/index.html"))
+}
+
+// Stop or start the simulation but not the program
+#[post("/toggleSim")]
+async fn toggleSim() -> impl Responder 
+{
+    match simStateManager(false, None)
+    {
+        SimulationState::RUNNING => simStateManager(true, Some(SimulationState::STOP)),
+        SimulationState::STOP => simStateManager(true, Some(SimulationState::RUNNING)),
+        SimulationState::EXIT => SimulationState::EXIT,
+        _ => simStateManager(true, Some(SimulationState::STOP))
+    };
+
+    HttpResponse::Ok()
+}
+
+// Exit the program entirely
+#[post("/exitSim")]
+async fn exitSim() -> impl Responder
+{
+    simStateManager(true, Some(SimulationState::EXIT));
+
+    HttpResponse::Ok()
+}
+
+// Pause or unpause the simulation without killing it fully
+#[post("/suspendSim")]
+async fn suspendSim() -> impl Responder
+{
+    match simStateManager(false, None)
+    {
+        SimulationState::RUNNING => simStateManager(true, Some(SimulationState::PAUSED)),
+        SimulationState::PAUSED => simStateManager(true, Some(SimulationState::RUNNING)),
+        SimulationState::EXIT => SimulationState::EXIT,
+        SimulationState::STOP => SimulationState::STOP
+    };
+
+    HttpResponse::Ok()
+}
+
+// Set up and asynchronously run the Actix HTTP server for the control panel
+#[actix_web::main]
+async fn webServer() -> std::io::Result<()>
+{
+    HttpServer::new(|| {
+        App::new()
+            .service(getPage)
+            .service(toggleSim)
+            .service(exitSim)
+            .service(suspendSim)
+        })
+        .disable_signals()
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
 }
 
 fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>, 
                         HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)
 {
-    let file_path = "/home/data/factory.json";
+    let file_path = "data/factory.json";
     let json_data = read_json_file(file_path);
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
@@ -255,7 +397,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
-fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &str) -> (Server, HashMap<String, NodeId>)
+fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &str) -> HashMap<String, NodeId>
 {
     let machinesHashMap = machinesHashMap.values();
     let mut machines = Vec::<Machine>::new();
@@ -264,22 +406,19 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
         machines.push(machine.borrow().clone());
     }
     
-    let server = initServer();
-
     let ns = {
-        let address_space = server.address_space();
+        let address_space = addressSpace.clone();
         let mut address_space = address_space.write();
         address_space.register_namespace("urn:line-server").unwrap()
     };
 
     let mut nodeIDs = HashMap::<String, NodeId>::new();
 
-    let addressSpace = server.address_space();
-
     {
         let mut addressSpace = addressSpace.write();
 
         let folderID = addressSpace.add_folder(lineName, lineName, &NodeId::objects_folder_id()).unwrap();
+        nodeIDs.insert(String::from("root"), folderID.clone());
 
         for i in 0 as usize..machines.len()
         {
@@ -358,7 +497,7 @@ fn serverSetup(machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &st
         }
     }
 
-    return (server, nodeIDs);
+    return nodeIDs;
 }
 
 // Handles updating the values of each machine on the OPC server
