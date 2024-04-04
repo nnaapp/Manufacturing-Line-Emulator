@@ -10,15 +10,19 @@
 <body class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center">
     <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
         <div class="card-header col-12 text-center text-light">
-            <h2>Simulation Control Panel</h2>
+            <h2>Simulator Control Panel</h2>
         </div>
         <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
             <!-- <h3 class="card-title">Click to Start or Stop the Simulator</h3>-->
-            <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start </button>
+            <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start Up Simulator </button>
         </div> 
         <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
             <!-- <h3>Click to Pause or Resume the Simulator</h3> -->
-            <button class="col-12 col-lg-5 btn btn-lg btn-warning text-center" type="button" id="btnPause" data-status="pause"> Pause </button>
+            <button class="col-12 col-lg-5 btn btn-lg btn-warning text-center" type="button" id="btnPause" data-status="pause"> Pause Simulation </button>
+        </div> 
+        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+            <!-- <h3>Click to Pause or Resume the Simulator</h3> -->
+            <button class="col-12 col-lg-5 btn btn-lg btn-outline-danger text-center" type="button" id="btnExit" data-status="exit"> Exit Entire Program </button>
         </div> 
     </div>
 
@@ -35,14 +39,14 @@
     $('#btnStart').on('click',function(){
         let strStatus = $(this).attr('data-status');
         if(strStatus == 'start'){
-            $('#btnStart').attr('data-status','stop').text('Stop').removeClass('btn-success').addClass('btn-danger');
-            console.log('I was a start button but now stop')
+            $('#btnStart').attr('data-status','stop').text('Shut Down Simulator').removeClass('btn-success').addClass('btn-danger');
+            console.log('I was a startup button but now shutdown')
             //enables the pause button
             $('#btnPause').prop('disabled', false)
         } else {
-            $('#btnStart').attr('data-status','start').text('Start').removeClass('btn-danger').addClass('btn-success');
-            console.log('I was a stop button but now start')
-            $('#btnPause').attr('data-status','pause').text('Pause').removeClass('btn-info').addClass('btn-warning');
+            $('#btnStart').attr('data-status','start').text('Start Up Simulator').removeClass('btn-danger').addClass('btn-success');
+            console.log('I was a shutdown button but now startup')
+            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
             console.log('I was a resume button but now Pause')
             $('#btnPause').prop('disabled', true)
     }    
@@ -52,10 +56,10 @@
     $('#btnPause').on('click',function(){
         let strStatus = $(this).attr('data-status');
         if(strStatus == 'pause'){
-            $('#btnPause').attr('data-status','resume').text('Resume').removeClass('btn-warning').addClass('btn-info');
+            $('#btnPause').attr('data-status','resume').text('Resume Simulation').removeClass('btn-warning').addClass('btn-info');
             console.log('I was a pause button but now resume')
         } else {
-            $('#btnPause').attr('data-status','pause').text('Pause').removeClass('btn-info').addClass('btn-warning');
+            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
         console.log('I was a resume button but now Pause')
     }    
 });
