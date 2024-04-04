@@ -121,7 +121,6 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
             pauseHappened = false;
             prevTime = iterTime;
         }   
-        deltaTime = iterTime.as_micros() - prevTime.as_micros();
 
         // if deltaTime > dtPeak { dtPeak = deltaTime; }
         // dtSum += deltaTime;
@@ -164,7 +163,6 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
             pollDeltaTimeUs -= pollRateUs;
             let mut addressSpace = addressSpace.write();
             serverPoll(&mut addressSpace, &machines, &nodeIDs, &machineIDs);
-            let state = simStateManager(false, None);
         }
 
         // Log system time at the start of this iteration, for use in next iteration
