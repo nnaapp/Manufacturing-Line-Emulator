@@ -6,11 +6,21 @@
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/darkly/bootstrap.min.css" rel="stylesheet">
     <title>Simulator Control Panel</title>
 </head>
-<body class="bg-dark">
 
-    <div class="col-12 d-flex justify-content-center align-items-center mt-5">
-        <button class="col-12 col-lg-5 btn btn-success text-center" type="button" id="btnStart" data-status="start"> Start </button>
-    </div> 
+<body class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center">
+    <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
+        <div class="card-header col-12 text-center text-light">
+            <h2>Simulation Control Panel</h2>
+        </div>
+        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
+            <!-- <h3 class="card-title">Click to Start or Stop the Simulator</h3>-->
+            <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start </button>
+        </div> 
+        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+            <!-- <h3>Click to Pause or Resume the Simulator</h3> -->
+            <button class="col-12 col-lg-5 btn btn-lg btn-warning text-center" type="button" id="btnPause" data-status="pause"> Pause </button>
+        </div> 
+    </div>
 
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
@@ -19,17 +29,34 @@
 </body>
 </html>
 <script>
-
-
+    // disables the pause button until the start button has been clicked
+    $('#btnPause').prop('disabled', true)
 // event to change start button to stop and vice versa
     $('#btnStart').on('click',function(){
         let strStatus = $(this).attr('data-status');
         if(strStatus == 'start'){
             $('#btnStart').attr('data-status','stop').text('Stop').removeClass('btn-success').addClass('btn-danger');
             console.log('I was a start button but now stop')
+            //enables the pause button
+            $('#btnPause').prop('disabled', false)
         } else {
             $('#btnStart').attr('data-status','start').text('Start').removeClass('btn-danger').addClass('btn-success');
-        console.log('I was a stop button but now start')
+            console.log('I was a stop button but now start')
+            $('#btnPause').attr('data-status','pause').text('Pause').removeClass('btn-info').addClass('btn-warning');
+            console.log('I was a resume button but now Pause')
+            $('#btnPause').prop('disabled', true)
+    }    
+});
+
+// event to change pause button to play and vice versa
+    $('#btnPause').on('click',function(){
+        let strStatus = $(this).attr('data-status');
+        if(strStatus == 'pause'){
+            $('#btnPause').attr('data-status','resume').text('Resume').removeClass('btn-warning').addClass('btn-info');
+            console.log('I was a pause button but now resume')
+        } else {
+            $('#btnPause').attr('data-status','pause').text('Pause').removeClass('btn-info').addClass('btn-warning');
+        console.log('I was a resume button but now Pause')
     }    
 });
 
