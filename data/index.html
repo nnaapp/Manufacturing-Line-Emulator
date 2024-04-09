@@ -16,5 +16,35 @@
     <form action='/exitSim' method=POST>
       <button type="submit">exit</button>
     </form>
+
+    <p id="txtTime"></p>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script>
+        $.ajax({
+            type: 'POST',
+            url: 'http://localhost:8080/setConfig?config=test.json',
+            error: function(e) {
+                console.log(e);
+            },
+            success: function(result) {
+                console.log(result);
+            }
+        });
+
+        var timeTracker = window.setInterval(function() {
+            $.ajax({
+                type: 'GET',
+                url: 'http://localhost:8080/getTime',
+                error: function(e) {
+                    console.log(e);
+                },
+                success: function(result) {
+                    console.log(result);
+                    $('#txtTime').text(result.activeTime / 1000000);
+                }
+            });
+        }, 1000)
+    </script>
 </body>
 </html>

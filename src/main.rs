@@ -19,11 +19,13 @@ use std::sync::{RwLock, Arc};
 use opcua::server::prelude::*;
 use opcua::sync::RwLock as opcuaRwLock;
 
-use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, post, App, HttpResponse, HttpServer, Responder, web, Result as ActixResult};
 
 use log2::*;
 
 use anyhow::Result;
+
+use serde::{Serialize, Deserialize};
 
 fn main() -> Result<()>
 {
@@ -102,7 +104,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     // and perform the simulation logic
     let mut pauseHappened = false;
     while simStateManager(false, None) != SimulationState::STOP && simStateManager(false, None) != SimulationState::EXIT
-    {   
+    {           
         // Just log that a pause happened and skip all of the simulating if the pause signal is set
         if simStateManager(false, None) == SimulationState::PAUSED 
         {
@@ -127,6 +129,8 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         // dtAmount += 1;
         
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
+
+        simTimeManager(true, Some(deltaTime));
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
         // update all machines
@@ -224,6 +228,55 @@ fn simStateManager(updateState: bool, newState: Option<SimulationState>) -> Simu
     return state.clone();
 }
 
+fn simConfigManager(updateConfig: bool, newConfig: Option<String>) -> String
+{
+    static CONFIG: RwLock<String> = RwLock::new(String::new());
+
+    if updateConfig && newConfig.is_some()
+    {
+        let newConfig = newConfig.unwrap();
+        *CONFIG.write().unwrap() = newConfig;
+    }
+
+    if CONFIG.read().ok().unwrap().len() == 0
+    {
+        *CONFIG.write().unwrap() = String::from("factory.json");
+    }
+
+    return CONFIG.read().ok().unwrap().clone();
+}
+
+fn simTimeManager(updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
+{
+    static ACTIVETIME: RwLock<u128> = RwLock::new(0);
+    static RUNTIME: RwLock<u128> = RwLock::new(0);
+
+    let state = simStateManager(false, None);
+
+    if state == SimulationState::STOP
+    {
+        *RUNTIME.write().unwrap() = 0;
+        *ACTIVETIME.write().unwrap() = 0;
+
+        return (0, 0);
+    }
+
+    if updateTimes && deltaTime.is_some()
+    {
+        let deltaTime = deltaTime.unwrap();
+        *RUNTIME.write().unwrap() += deltaTime;
+
+        if state == SimulationState::RUNNING
+        {
+            *ACTIVETIME.write().unwrap() += deltaTime;
+        }
+    }
+
+    let activetime = *ACTIVETIME.read().ok().unwrap();
+    let runtime = *RUNTIME.read().ok().unwrap();
+    return (activetime, runtime);
+}
+
 // Get HTML for web page
 #[get("/")]
 async fn getPage() -> impl Responder
@@ -272,6 +325,39 @@ async fn suspendSim() -> impl Responder
     HttpResponse::Ok()
 }
 
+#[derive(Deserialize)]
+struct ConfigQuery 
+{
+    config: String
+}
+
+#[post("/setConfig")]
+async fn setSimConfig(info: web::Query<ConfigQuery>) -> impl Responder
+{
+    simConfigManager(true, Some(info.config.clone()));
+
+    HttpResponse::Ok()
+}
+
+#[derive(Serialize)]
+struct TimeResponse
+{
+    activeTime: u128,
+    runningTime: u128
+}
+
+#[get("/getTime")]
+async fn getSimTime() -> ActixResult<impl Responder>
+{
+    let rawTimes = simTimeManager(false, None);
+    let timesObj = TimeResponse {
+        activeTime: rawTimes.0,
+        runningTime: rawTimes.1
+    };
+
+    Ok(web::Json(timesObj))
+}
+
 // Set up and asynchronously run the Actix HTTP server for the control panel
 #[actix_web::main]
 async fn webServer() -> std::io::Result<()>
@@ -282,6 +368,8 @@ async fn webServer() -> std::io::Result<()>
             .service(toggleSim)
             .service(exitSim)
             .service(suspendSim)
+            .service(setSimConfig)
+            .service(getSimTime)
         })
         .disable_signals()
         .bind(("127.0.0.1", 8080))?
