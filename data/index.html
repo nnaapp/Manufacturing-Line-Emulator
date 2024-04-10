@@ -7,39 +7,32 @@
     <title>Simulator Control Panel</title>
 </head>
 
-<body class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center mt-4" id="StartPage">
-  <div class="d-flex col-12 flex-column align-items-center mt-4">
+<body class="bg-dark col-12 vh-100 mt-4">
+  <div class="d-flex col-12 flex-column align-items-center mt-4"; id="StartPage">
     <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
         <div class="card-header col-12 text-center text-light">
           <h2>Simulator Control Panel</h2>
         </div>
         <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
           <h4 class="card-title">Please select your config file and or set a runtime</h4>
-          <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
-        </div> 
-      </div>
-  
+           <!--Textbox-->
+            <label for="timeLim">Please enter a time limit in minutes:</label>
+            <input type="number" id="timeLim" name="timeLim" placeholder="80">
 
-
-  <div class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center mt-4" id="ControlPanel">
-    <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
-      <!--Textbox-->
-      <label for="timeLim">Please enter a time limit in minutes:</label>
-      <input type="number" id="timeLim" name="timeLim" placeholder="80">
-
-      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
-        <div class="card col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
             <div class="card-header col-12 text-center text-light">
                 <h2>Filepath</h2>
             </div>
-                <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
-                    <div>
-                        <input id="txtFilepath" class="form-control" size="50" style="text-align: center;" placeholder="Filepath (ex. data/filename/)">
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <form>
+                        <input id="txtFileName" class="form-control" size="50" style=" text-align: center;" placeholder="Filename">
+                    </form>
+          <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
+        </div> 
+    </div>    
+  </div>
 
+      
+  <div class="bg-dark col-12 vh-100 mt-4", style="display:none", id="ControlPanel">
+    <div class="card d-flex justify-content-center align-items-center col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
       <div class="card-header col-12 text-center text-light">
         <h2>Times</h2>
       </div>
@@ -92,7 +85,7 @@
       </div> 
     </div>  
   </div>    
-</div>
+
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
@@ -106,23 +99,51 @@
 // disables the pause button until the start button has been clicked
 $('#btnPause').prop('disabled', true)
 
+
+
 // event to change start button to stop and vice versa
 $('#btnStart').on('click',function(){
   let strStatus = $(this).attr('data-status');
   if(strStatus == 'start'){
     $.ajax({
       type: 'POST',
-      url: 'https://localhost:8080/toggleSim',
+      url: 'http://localhost:8080/setConfig?config=' + encodeURIComponent($('#txtFileName').val()),
       error: function(error){
         console.log(error)
       },
       success: function(success){
-        console.log(success)
-        $('#divStartPage').slideToggle(function(){
-          $('#divControlPanel').slideToggle();
+        let timeLim = $('#timeLim').val()
+        if (timeLim == '' || timeLim == undefined){
+          timeLim = 0
+        }
+        //global something for tracking if there is a time limit and what it is
+        //do some math to get how full bar should be and spin it up
+        $.ajax({
+          type: 'POST',
+          url:'http://localhost:8080/setTimer?timer=' + encodeURIComponent(timeLim),
+          error: function(error){
+            console.log(error)
+          },
+          success: function(){
+            $.ajax({
+              type: 'POST',
+              url: 'http://localhost:8080/toggleSim',
+              error: function(error){
+                console.log(error)
+              },
+              success: function(success){
+                console.log(success)
+                $('#StartPage').slideToggle(function(){
+                  $('#ControlPanel').slideToggle();
+                })
+                $('#btnPause').prop('disabled', false)
+                $('#btnResume').prop('disabled', true)
+              }
+            })
+          }
+          
         })
-        $('#btnPause').prop('disabled', false)
-        $('#btnResume').prop('disabled', true)
+        
       }
     })
   }      
@@ -130,11 +151,9 @@ $('#btnStart').on('click',function(){
 
 // event to for pause button click
 $('#btnPause').on('click',function(){
-  let strStatus = $(this).attr('data-status');
-  if(strStatus == 'pause'){
     $.ajax({
       type: 'POST',
-      url: 'https://localhost:8080/toggleSim',
+      url: 'http://localhost:8080/suspendSim',
       error: function(error){
         console.log(error)
       },
@@ -144,26 +163,22 @@ $('#btnPause').on('click',function(){
         $('#btnResume').prop('disabled', false)
       }
     })
-  }
-});
+  });
 
 //event for resume button click
 $('#btnResume').on('click',function(){
-  let strStatus = $(this).attr('data-status');
-  if(strStatus == 'resume'){
     $.ajax({
       type: 'POST',
-      url: 'https://localhost:8080/toggleSim',
+      url: 'http://localhost:8080/suspendSim',
       error: function(error){
         console.log(error)
       },
       success: function(success){
         console.log(success)
-        $('#btnPause').prop('disabled', true)
-        $('#btnResume').prop('disabled', false)
+        $('#btnPause').prop('disabled', false)
+        $('#btnResume').prop('disabled', true)
       }
     })
-  }
 });
 //event for close button click
 $('#btnClose').on('click',function(){
@@ -171,7 +186,7 @@ $('#btnClose').on('click',function(){
   if(strStatus == 'Close'){
     $.ajax({
       type: 'POST',
-      url: 'https://localhost:8080/toggleSim',
+      url: 'http://localhost:8080/toggleSim',
       error: function(error){
         console.log(error)
       },
@@ -184,12 +199,14 @@ $('#btnClose').on('click',function(){
     })
   }
 });
+
+//for exiting entire program
 $('#btnExit').on('click',function(){
   let strStatus = $(this).attr('data-status');
   if(strStatus == 'exit'){
     $.ajax({
       type: 'POST',
-      url: 'https://localhost:8080/toggleSim',
+      url: 'http://localhost:8080/exitSim',
       error: function(error){
         console.log(error)
       },
@@ -204,30 +221,4 @@ $('#btnExit').on('click',function(){
     })
   }
 });
-
-
-
 </script>
-<!--
-// event to change pause button to play and vice versa
-    $('#btnPause').on('click',function(){
-        let strStatus = $(this).attr('data-status');
-        if(strStatus == 'pause'){
-            $('#btnPause').attr('data-status','resume').text('Resume Simulation').removeClass('btn-warning').addClass('btn-info');
-            console.log('I was a pause button but now resume')
-        } else {
-            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
-        console.log('I was a resume button but now Pause')
-    }    
-});
-
-<!-- $('#btnStart').attr('data-status','stop').text('Shut Down Simulator').removeClass('btn-success').addClass('btn-danger');
-            console.log('I was a startup button but now shutdown')
-            //enables the pause button
-            $('#btnPause').prop('disabled', false)
-        } else {
-            $('#btnStart').attr('data-status','start').text('Start Up Simulator').removeClass('btn-danger').addClass('btn-success');
-            console.log('I was a shutdown button but now startup')
-            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
-            console.log('I was a resume button but now Pause')
-            $('#btnPause').prop('disabled', true)-->
