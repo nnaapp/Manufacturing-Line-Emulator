@@ -1,0 +1,132 @@
+{
+    "factory": {
+      "name": "N/A",
+      "description": "A simple manufacturing line",
+      "simSpeed": 1.0,
+      "pollRateMs": 100,
+      "debounceRateInPolls": 10,
+      "runtimeSec": 600,
+      "machines": [
+        {
+            "id": "machine-0",
+            "cost": 1,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [
+            ],
+            "inputIDs": [
+            ], 
+            "inputBehavior": "SPAWNER", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 1000,
+            "outputIDs": [
+              "belt0"
+            ],
+            "outputBehavior": "DEFAULT",
+            "outputSpeedMs": 0,
+            "outputCapacity": 1,
+            "sensor": true,
+            "sensorBaseline": 325.0, 
+            "sensorVariance": 7.0
+          },
+          {
+            "id": "machine-1",
+            "cost": 1,
+            "throughput": 2,
+            "state": "PRODUCING",
+            "faults": [
+            ],
+            "inputIDs": [
+              "belt0"
+            ], 
+            "inputBehavior": "DEFAULT", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 2000,
+            "outputIDs": [
+              "belt1"
+            ],
+            "outputBehavior": "DEFAULT",
+            "outputSpeedMs": 0,
+            "outputCapacity": 2,
+            "sensor": false,
+            "sensorBaseline": 0.0,
+            "sensorVariance": 0.0
+          },
+          {
+            
+            "id": "machine-2",
+            "cost": 4,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [
+            ],
+            "inputIDs": [
+              "belt1"
+            ], 
+            "inputBehavior": "DEFAULT", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 8,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 2000,
+            "outputIDs": [
+              "belt2"
+            ],
+            "outputBehavior": "DEFAULT",
+            "outputSpeedMs": 0,
+            "outputCapacity": 2,
+            "sensor": false,
+            "sensorBaseline": 0.0,
+            "sensorVariance": 0.0
+          },
+          {
+            "id": "machine-3",
+            "cost": 1,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [
+            ],
+            "inputIDs": [
+              "belt2"
+            ], 
+            "inputBehavior": "DEFAULT", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 1000,
+            "outputBehavior": "CONSUMER",
+            "outputIDs": [
+            ],
+            "outputSpeedMs": 0,
+            "outputCapacity": 1,
+            "sensor": false,
+            "sensorBaseline": 0.0,
+            "sensorVariance": 0.0
+          }
+      ],
+      "conveyors": [
+        {
+          "id": "belt0",
+          "capacity": 2,
+          "beltSpeedMs": 1000,
+          "inputID": null
+        },
+        {
+          "id": "belt1",
+          "capacity": 3,
+          "beltSpeedMs": 1000,
+          "inputID": null
+        },
+        {
+          "id": "belt2",
+          "capacity": 5,
+          "beltSpeedMs": 1000,
+          "inputID": null
+        }
+      ]
+    }
+  }
+  
