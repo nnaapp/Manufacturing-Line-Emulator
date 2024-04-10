@@ -7,104 +7,208 @@
     <title>Simulator Control Panel</title>
 </head>
 
-<body class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center">
-    <div class="d-flex col-12 flex-column align-items-center mt-4">
-        <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
-            <div class="card-header col-12 text-center text-light">
-                <h2>Simulator Control Panel</h2>
-            </div>
-            <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
-                <!-- <h3 class="card-title">Click to Start or Stop the Simulator</h3>-->
-                <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start Up Simulator </button>
-            </div> 
-            <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
-                <!-- <h3>Click to Pause or Resume the Simulator</h3> -->
-                <button class="col-12 col-lg-5 btn btn-lg btn-warning text-center" type="button" id="btnPause" data-status="pause"> Pause Simulation </button>
-            </div> 
-            <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
-                <!-- <h3>Click to Pause or Resume the Simulator</h3> -->
-                <button class="col-12 col-lg-5 btn btn-lg btn-outline-danger text-center" type="button" id="btnExit" data-status="exit"> Exit Entire Program </button>
-            </div> 
+<body class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center mt-4" id="StartPage">
+  <div class="d-flex col-12 flex-column align-items-center mt-4">
+    <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
+        <div class="card-header col-12 text-center text-light">
+          <h2>Simulator Control Panel</h2>
         </div>
-        <div class="">
-            <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
-                <div class="card-header col-12 text-center text-light">
-                    <h2>Times</h2>
-                </div>
-            <div class="row">
-                <div class="column-4">
-                    <div class="card col-12">
-                        <h4>Time Elapsed:</h4>
-                        <h5>> 28 minutes </h5>
-                        <!--Input uptime data here-->
-                    </div>
-                </div>
-            <div class="column-4">
-                <div class="card col-12">
-                    <h4>Time Remaining:</h4>
-                    <h5>> 32 minutes </h5>
-                        <!--Input time passed data here-->
-                </div>
+        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
+          <h4 class="card-title">Please select your config file and or set a runtime</h4>
+          <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
+        </div> 
+      </div>
+  
+
+
+  <div class="bg-dark d-flex col-12 vh-100 justify-content-center align-items-center mt-4" id="ControlPanel">
+    <div class="card col-12 col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
+      <!--Textbox-->
+      <label for="timeLim">Please enter a time limit in minutes:</label>
+      <input type="number" id="timeLim" name="timeLim" placeholder="80">
+
+      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
+        <div class="card col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
+            <div class="card-header col-12 text-center text-light">
+                <h2>Filepath</h2>
             </div>
-            </div>
-            <div class="column-4">
-              <div class="card col-12">
-                <h4>Progress:</h4>
-                <h5>> 48% </h5>
-                <!--Input some type of progress bar here?-->
-              </div>
-            </div>
-            <div class="column-4">
-                <div class="card col-12">
-                    <h4>Time Limit:</h4>
-                    <h5>> 60 minutes </h5>
-                    <!--Input initial time here-->
+                <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+                    <div>
+                        <input id="txtFilepath" class="form-control" size="50" style="text-align: center;" placeholder="Filepath (ex. data/filename/)">
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
-            <div class="card col-12 col-lg-9 bg-secondary mt-5" style="border-radius:0.15rm; border: solid #375a7f 3px;">
-                <div class="card-header col-12 text-center text-light">
-                    <h2>Filepath</h2>
-                </div>
-                    <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
-                        <div>
-                            <input id="txtFilepath" class="form-control" size="50" style="text-align: center;" placeholder="Filepath (ex. data/filename/)">
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div class="card-header col-12 text-center text-light">
+        <h2>Times</h2>
+      </div>
+    <div class="row">
+      <div class="column-4">
+        <div class="card col-12">
+          <h4>Time Elapsed:</h4>
+          <h5>> 28 minutes </h5>
+          <!--Input uptime data here-->
         </div>
- 
-    
-    
+      </div>
+      <div class="column-4">
+        <div class="card col-12">
+          <h4>Time Remaining:</h4>
+          <h5>> 32 minutes </h5>
+          <!--Input time passed data here-->
+        </div>
+      </div>
+    </div>
+      <div class="column-4">
+        <div class="card col-12">
+          <h4>Progress:</h4>
+          <h5>> 48% </h5>
+          <!--Input some type of progress bar here?-->
+        </div>
+      </div>
+      <div class="column-4">
+        <div class="card col-12">
+          <h4>Time Limit:</h4>
+          <h5>> 60 minutes </h5>
+          <!--Input initial time here-->
+        </div>
+      </div>
+
+      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+        <!-- <h3>Click to Pause the Simulator</h3> -->
+        <button class="col-12 col-lg-5 btn btn-lg btn-warning text-center" type="button" id="btnPause" data-status="pause"> Pause Simulation </button>
+      </div> 
+      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-4">
+        <!-- <h3>Click to Resume the Simulator</h3>-->
+        <button class="col-12 col-lg-5 btn btn-lg btn-success text-center" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
+      </div> 
+      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+        <!-- <h3>Click to close the Simulator</h3> -->
+        <button class="col-12 col-lg-5 btn btn-lg btn-outline-danger text-center" type="button" id="btnClose" data-status="Close"> Close Current Simulation </button>
+    </div> 
+      <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center mt-2">
+        <!-- <h3>Click to exit the Simulator</h3> -->
+        <button class="col-12 col-lg-5 btn btn-lg btn-outline-danger text-center" type="button" id="btnExit" data-status="exit"> Exit Entire Program </button>
+      </div> 
+    </div>  
+  </div>    
+</div>
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>
+
+
+
 <script>
-    // disables the pause button until the start button has been clicked
-    $('#btnPause').prop('disabled', true)
+// disables the pause button until the start button has been clicked
+$('#btnPause').prop('disabled', true)
+
 // event to change start button to stop and vice versa
-    $('#btnStart').on('click',function(){
-        let strStatus = $(this).attr('data-status');
-        if(strStatus == 'start'){
-            $('#btnStart').attr('data-status','stop').text('Shut Down Simulator').removeClass('btn-success').addClass('btn-danger');
-            console.log('I was a startup button but now shutdown')
-            //enables the pause button
-            $('#btnPause').prop('disabled', false)
-        } else {
-            $('#btnStart').attr('data-status','start').text('Start Up Simulator').removeClass('btn-danger').addClass('btn-success');
-            console.log('I was a shutdown button but now startup')
-            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
-            console.log('I was a resume button but now Pause')
-            $('#btnPause').prop('disabled', true)
-    }    
+$('#btnStart').on('click',function(){
+  let strStatus = $(this).attr('data-status');
+  if(strStatus == 'start'){
+    $.ajax({
+      type: 'POST',
+      url: 'https://localhost:8080/toggleSim',
+      error: function(error){
+        console.log(error)
+      },
+      success: function(success){
+        console.log(success)
+        $('#divStartPage').slideToggle(function(){
+          $('#divControlPanel').slideToggle();
+        })
+        $('#btnPause').prop('disabled', false)
+        $('#btnResume').prop('disabled', true)
+      }
+    })
+  }      
 });
 
+// event to for pause button click
+$('#btnPause').on('click',function(){
+  let strStatus = $(this).attr('data-status');
+  if(strStatus == 'pause'){
+    $.ajax({
+      type: 'POST',
+      url: 'https://localhost:8080/toggleSim',
+      error: function(error){
+        console.log(error)
+      },
+      success: function(success){
+        console.log(success)
+        $('#btnPause').prop('disabled', true)
+        $('#btnResume').prop('disabled', false)
+      }
+    })
+  }
+});
+
+//event for resume button click
+$('#btnResume').on('click',function(){
+  let strStatus = $(this).attr('data-status');
+  if(strStatus == 'resume'){
+    $.ajax({
+      type: 'POST',
+      url: 'https://localhost:8080/toggleSim',
+      error: function(error){
+        console.log(error)
+      },
+      success: function(success){
+        console.log(success)
+        $('#btnPause').prop('disabled', true)
+        $('#btnResume').prop('disabled', false)
+      }
+    })
+  }
+});
+//event for close button click
+$('#btnClose').on('click',function(){
+  let strStatus = $(this).attr('data-status');
+  if(strStatus == 'Close'){
+    $.ajax({
+      type: 'POST',
+      url: 'https://localhost:8080/toggleSim',
+      error: function(error){
+        console.log(error)
+      },
+      success: function(success){
+        console.log(success)
+        $('#btnPause').prop('disabled', true)
+        $('#btnResume').prop('disabled', true)
+        //possibly stuck in disabled? no bc successful start click will change it back?
+      }
+    })
+  }
+});
+$('#btnExit').on('click',function(){
+  let strStatus = $(this).attr('data-status');
+  if(strStatus == 'exit'){
+    $.ajax({
+      type: 'POST',
+      url: 'https://localhost:8080/toggleSim',
+      error: function(error){
+        console.log(error)
+      },
+      success: function(success){
+        console.log(success)
+        $('#divControlPanel').slideToggle(function(){
+          $('#divStartPage').slideToggle();
+        })
+        $('#btnPause').prop('disabled', true)
+        $('#btnResume').prop('disabled', true)
+      }
+    })
+  }
+});
+
+
+
+</script>
+<!--
 // event to change pause button to play and vice versa
     $('#btnPause').on('click',function(){
         let strStatus = $(this).attr('data-status');
@@ -117,4 +221,13 @@
     }    
 });
 
-</script>
+<!--$('#btnStart').attr('data-status','stop').text('Shut Down Simulator').removeClass('btn-success').addClass('btn-danger');
+            console.log('I was a startup button but now shutdown')
+            //enables the pause button
+            $('#btnPause').prop('disabled', false)
+        } else {
+            $('#btnStart').attr('data-status','start').text('Start Up Simulator').removeClass('btn-danger').addClass('btn-success');
+            console.log('I was a shutdown button but now startup')
+            $('#btnPause').attr('data-status','pause').text('Pause Simulation').removeClass('btn-info').addClass('btn-warning');
+            console.log('I was a resume button but now Pause')
+            $('#btnPause').prop('disabled', true)-->
