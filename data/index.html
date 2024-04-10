@@ -23,7 +23,7 @@
     <script>
         $.ajax({
             type: 'POST',
-            url: 'http://localhost:8080/setConfig?config=test.json',
+            url: 'http://localhost:8080/setConfig?config=factory2.json',
             error: function(e) {
                 console.log(e);
             },
@@ -31,6 +31,16 @@
                 console.log(result);
             }
         });
+        $.ajax({
+            type: 'POST',
+            url: 'http://localhost:8080/setTimer?timer=10',
+            error: function(e) {
+                console.log(e);
+            },
+            success: function(result) {
+                console.log('Set timer: ' + e);
+            }
+        })
 
         var timeTracker = window.setInterval(function() {
             $.ajax({
