@@ -6,39 +6,37 @@ use machine::*;
 mod json;
 use json::*;
 
-mod server;
-use server::*;
+mod servers;
+use servers::*;
 
 use std::borrow::BorrowMut;
 use std::time::{UNIX_EPOCH,SystemTime,Duration};
 use std::collections::HashMap;
 use std::thread;
 use std::cell::{RefCell, RefMut};
-use std::sync::{RwLock, Arc};
+use std::sync::Arc;
 
 use opcua::server::prelude::*;
 use opcua::sync::RwLock as opcuaRwLock;
 
-use actix_web::{get, post, App, HttpResponse, HttpServer, Responder, web, Result as ActixResult};
-
 use log2::*;
 
-use anyhow::Result;
+use in_container;
 
-use serde::{Serialize, Deserialize};
+use anyhow::Result;
 
 fn main() -> Result<()>
 {
     let _log2 = log2::start();
 
     // Ensure the simulation state is set to running, and initialize the web server for the control panel
-    simStateManager(true, Some(SimulationState::RUNNING));    
+    simStateManager(true, Some(SimulationState::STOP));    
     thread::spawn(|| {
-        let _ = webServer();
+        let _ = initWebServer();
     });
 
     // Set up the OPC UA server and keep track of the address space (Arc<RwLock<AddressSpace>>)
-    let opcuaServer = initServer();
+    let opcuaServer = initOPCServer();
     let mut addressSpace = opcuaServer.address_space();
     thread::spawn(|| {
         opcuaServer.run();
@@ -100,11 +98,16 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     // let mut dtSum: u128 = 0;
     // let mut dtAmount: u128 = 0;
 
+    // In the case the user sets a time limit, this will be used to stop the sim when the time has passed
+    let mut executionTimer = 0; // Microseconds counter
+    let timerLimit = simTimerManager(false, None); // Time limit for the sim
+    let timerExists = timerLimit != 0; // If this resolves to true, a timer was set
+
     // Loop until the signal is given to stop this simulation or exit the entire program
     // and perform the simulation logic
     let mut pauseHappened = false;
     while simStateManager(false, None) != SimulationState::STOP && simStateManager(false, None) != SimulationState::EXIT
-    {           
+    {                   
         // Just log that a pause happened and skip all of the simulating if the pause signal is set
         if simStateManager(false, None) == SimulationState::PAUSED 
         {
@@ -127,10 +130,22 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         // if deltaTime > dtPeak { dtPeak = deltaTime; }
         // dtSum += deltaTime;
         // dtAmount += 1;
-        
+
+        // Microsecond change in time between executions of loop
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
-        simTimeManager(true, Some(deltaTime));
+        simClockManager(true, Some(deltaTime));
+
+        if timerExists
+        {
+            executionTimer += deltaTime;
+            if executionTimer >= timerLimit
+            {
+                debug!("Execution time exceeded, ending simulation.");
+                simStateManager(true, Some(SimulationState::STOP));
+                break;
+            }
+        }
 
         // rng is used to seed the update with any random integer, which is used for any rng dependent operations
         // update all machines
@@ -199,189 +214,17 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     Ok(())
 }
 
-// The four states for the simulation
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum SimulationState
-{
-    RUNNING, // Running as normal
-    PAUSED,  // Paused but still waiting
-    STOP,    // Full-stop the simulation
-    EXIT,    // Fully exit the program
-}
-
-// This is our solution to getting signals from our Actix HTTP server out into the simulator.
-// We could not get an object or other easy to move flag inside the service that the web page uses,
-// so we use static memory to keep track of a "master state" for the simulation, which is 
-// either get or set depending on function arguments.
-// 
-// false and None for getter, true and Some(SimulationState::StateHere) for setter 
-fn simStateManager(updateState: bool, newState: Option<SimulationState>) -> SimulationState
-{
-    static STATE: RwLock<SimulationState> = RwLock::new(SimulationState::RUNNING);
-
-    if updateState && newState.is_some()
-    {
-        *STATE.write().unwrap() = newState.unwrap();
-    }
-
-    let state = *STATE.read().ok().unwrap();
-    return state.clone();
-}
-
-fn simConfigManager(updateConfig: bool, newConfig: Option<String>) -> String
-{
-    static CONFIG: RwLock<String> = RwLock::new(String::new());
-
-    if updateConfig && newConfig.is_some()
-    {
-        let newConfig = newConfig.unwrap();
-        *CONFIG.write().unwrap() = newConfig;
-    }
-
-    if CONFIG.read().ok().unwrap().len() == 0
-    {
-        *CONFIG.write().unwrap() = String::from("factory.json");
-    }
-
-    return CONFIG.read().ok().unwrap().clone();
-}
-
-fn simTimeManager(updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
-{
-    static ACTIVETIME: RwLock<u128> = RwLock::new(0);
-    static RUNTIME: RwLock<u128> = RwLock::new(0);
-
-    let state = simStateManager(false, None);
-
-    if state == SimulationState::STOP
-    {
-        *RUNTIME.write().unwrap() = 0;
-        *ACTIVETIME.write().unwrap() = 0;
-
-        return (0, 0);
-    }
-
-    if updateTimes && deltaTime.is_some()
-    {
-        let deltaTime = deltaTime.unwrap();
-        *RUNTIME.write().unwrap() += deltaTime;
-
-        if state == SimulationState::RUNNING
-        {
-            *ACTIVETIME.write().unwrap() += deltaTime;
-        }
-    }
-
-    let activetime = *ACTIVETIME.read().ok().unwrap();
-    let runtime = *RUNTIME.read().ok().unwrap();
-    return (activetime, runtime);
-}
-
-// Get HTML for web page
-#[get("/")]
-async fn getPage() -> impl Responder
-{
-    HttpResponse::Ok()
-        .content_type("text/html")
-        .body(include_str!("../data/index.html"))
-}
-
-// Stop or start the simulation but not the program
-#[post("/toggleSim")]
-async fn toggleSim() -> impl Responder 
-{
-    match simStateManager(false, None)
-    {
-        SimulationState::RUNNING => simStateManager(true, Some(SimulationState::STOP)),
-        SimulationState::STOP => simStateManager(true, Some(SimulationState::RUNNING)),
-        SimulationState::EXIT => SimulationState::EXIT,
-        _ => simStateManager(true, Some(SimulationState::STOP))
-    };
-
-    HttpResponse::Ok()
-}
-
-// Exit the program entirely
-#[post("/exitSim")]
-async fn exitSim() -> impl Responder
-{
-    simStateManager(true, Some(SimulationState::EXIT));
-
-    HttpResponse::Ok()
-}
-
-// Pause or unpause the simulation without killing it fully
-#[post("/suspendSim")]
-async fn suspendSim() -> impl Responder
-{
-    match simStateManager(false, None)
-    {
-        SimulationState::RUNNING => simStateManager(true, Some(SimulationState::PAUSED)),
-        SimulationState::PAUSED => simStateManager(true, Some(SimulationState::RUNNING)),
-        SimulationState::EXIT => SimulationState::EXIT,
-        SimulationState::STOP => SimulationState::STOP
-    };
-
-    HttpResponse::Ok()
-}
-
-#[derive(Deserialize)]
-struct ConfigQuery 
-{
-    config: String
-}
-
-#[post("/setConfig")]
-async fn setSimConfig(info: web::Query<ConfigQuery>) -> impl Responder
-{
-    simConfigManager(true, Some(info.config.clone()));
-
-    HttpResponse::Ok()
-}
-
-#[derive(Serialize)]
-struct TimeResponse
-{
-    activeTime: u128,
-    runningTime: u128
-}
-
-#[get("/getTime")]
-async fn getSimTime() -> ActixResult<impl Responder>
-{
-    let rawTimes = simTimeManager(false, None);
-    let timesObj = TimeResponse {
-        activeTime: rawTimes.0,
-        runningTime: rawTimes.1
-    };
-
-    Ok(web::Json(timesObj))
-}
-
-// Set up and asynchronously run the Actix HTTP server for the control panel
-#[actix_web::main]
-async fn webServer() -> std::io::Result<()>
-{
-    HttpServer::new(|| {
-        App::new()
-            .service(getPage)
-            .service(toggleSim)
-            .service(exitSim)
-            .service(suspendSim)
-            .service(setSimConfig)
-            .service(getSimTime)
-        })
-        .disable_signals()
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await
-}
-
 fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>, 
                         HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)
 {
-    let file_path = "data/factory.json";
-    let json_data = read_json_file(file_path);
+    let file_path = simConfigManager(false, None);
+    let json_data: String;
+    if in_container::in_container()
+    {
+        json_data = read_json_file(format!("/home/data/{}", file_path).as_str());
+    } else {
+        json_data = read_json_file(format!("./data/{}", file_path).as_str());
+    }
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
     info!("Factory Name: {}", data.factory.name);

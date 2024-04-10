@@ -7,6 +7,7 @@ repository = "https://github.com/nnaapp/Manufacturing-Line-Emulator"
 edition = "2021"
 
 [dependencies]
+in-container = "1.1.0"
 anyhow = "1.0.81"
 actix-web = { version = "4.5.1", optional = true }
 actix-files = { version = "0.6.5", optional = true }
