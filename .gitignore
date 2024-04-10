@@ -4,3 +4,4 @@ Cargo.lock
 *pki*/*
 .cargo/*
 perf*
+.DS_Store
