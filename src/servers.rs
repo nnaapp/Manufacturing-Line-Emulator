@@ -225,8 +225,8 @@ struct TimerQuery
 #[post("/setTimer")]
 async fn setSimTimer(info: web::Query<TimerQuery>) -> impl Responder
 {
-    // Converts received time into microseconds, web service expects seconds
-    simTimerManager(true, Some(info.timer.clone() as u128 * 1000000));
+    // Converts received time into microseconds, web service expects minutes
+    simTimerManager(true, Some(info.timer.clone() as u128 * 1000000 * 60));
     HttpResponse::Ok()
 }
 
