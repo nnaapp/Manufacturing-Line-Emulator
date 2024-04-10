@@ -1,0 +1,96 @@
+{
+    "factory": {
+      "name": "N/A",
+      "description": "Test for what happens when an input belt is fed into a producer",
+      "simSpeed": 8.0,
+      "pollRateMs": 100,
+      "debounceRateInPolls": 10,
+      "runtimeSec": 600,
+      "machines": [
+        {
+            "id": "Producer",
+            "cost": 1,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [],
+            "inputIDs": [
+            ], 
+            "inputBehavior": "SPAWNER", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 1000,
+            "outputIDs": [
+              "inputBelt"
+            ],
+            "outputBehavior": "DEFAULT",
+            "outputSpeedMs": 0,
+            "outputCapacity": 1,
+            "sensor": false,
+            "sensorBaseline": 0.0, 
+            "sensorVariance": 0.0
+          },
+          {
+            "id": "TestProducer",
+            "cost": 10000,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [],
+            "inputIDs": [
+              "inputBelt"
+            ], 
+            "inputBehavior": "SPAWNER", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 2000,
+            "outputIDs": [
+              "outputBelt"
+            ],
+            "outputBehavior": "DEFAULT",
+            "outputSpeedMs": 0,
+            "outputCapacity": 1,
+            "sensor": false,
+            "sensorBaseline": 0.0,
+            "sensorVariance": 0.0
+          },
+          {
+            
+            "id": "Consumer",
+            "cost": 1,
+            "throughput": 1,
+            "state": "PRODUCING",
+            "faults": [],
+            "inputIDs": [
+              "outputBelt"
+            ], 
+            "inputBehavior": "DEFAULT", 
+            "inputSpeedMs": 0,
+            "inputCapacity": 1,
+            "processingBehavior": "DEFAULT",
+            "processingSpeedMs": 2000,
+            "outputIDs": [],
+            "outputBehavior": "CONSUMER",
+            "outputSpeedMs": 0,
+            "outputCapacity": 1,
+            "sensor": false,
+            "sensorBaseline": 0.0,
+            "sensorVariance": 0.0
+          }
+      ],
+      "conveyors": [
+        {
+          "id": "inputBelt",
+          "capacity": 2,
+          "beltSpeedMs": 1000,
+          "inputID": null
+        },
+        {
+          "id": "outputBelt",
+          "capacity": 3,
+          "beltSpeedMs": 1000,
+          "inputID": null
+        }
+      ]
+    }
+  }
