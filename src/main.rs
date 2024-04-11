@@ -50,6 +50,7 @@ fn main() -> Result<()>
         
         if state == SimulationState::RUNNING
         {
+            simClockManager(true, false, None);
             let _ = simulation(&mut addressSpace);
         }
         else if state == SimulationState::EXIT
@@ -108,9 +109,18 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     let mut pauseHappened = false;
     while simStateManager(false, None) != SimulationState::STOP && simStateManager(false, None) != SimulationState::EXIT
     {                   
+        start = SystemTime::now();
+        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");  
+
+        // Microsecond change in time between executions of loop
+        deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
+
         // Just log that a pause happened and skip all of the simulating if the pause signal is set
         if simStateManager(false, None) == SimulationState::PAUSED 
         {
+            // Track time while paused for a total runtime tracker
+            simClockManager(false, true, Some(deltaTime));
+            prevTime = iterTime;
             pauseHappened = true; 
             continue; 
         }
@@ -131,10 +141,8 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         // dtSum += deltaTime;
         // dtAmount += 1;
 
-        // Microsecond change in time between executions of loop
-        deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
-        simClockManager(true, Some(deltaTime));
+        simClockManager(false, true, Some(deltaTime));
 
         if timerExists
         {

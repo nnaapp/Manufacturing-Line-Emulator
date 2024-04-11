@@ -91,14 +91,14 @@ pub fn simConfigManager(updateConfig: bool, newConfig: Option<String>) -> String
     return CONFIG.read().ok().unwrap().clone();
 }
 
-pub fn simClockManager(updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
+pub fn simClockManager(zeroTimes: bool, updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
 {
     static ACTIVETIME: RwLock<u128> = RwLock::new(0);
     static RUNTIME: RwLock<u128> = RwLock::new(0);
 
     let state = simStateManager(false, None);
 
-    if state == SimulationState::STOP
+    if zeroTimes
     {
         *RUNTIME.write().unwrap() = 0;
         *ACTIVETIME.write().unwrap() = 0;
@@ -147,7 +147,8 @@ async fn getPage() -> impl Responder
 #[post("/toggleSim")]
 async fn toggleSim() -> impl Responder 
 {
-    match simStateManager(false, None)
+    let state = simStateManager(false, None);
+    match state
     {
         SimulationState::RUNNING => simStateManager(true, Some(SimulationState::STOP)),
         SimulationState::STOP => simStateManager(true, Some(SimulationState::RUNNING)),
@@ -156,6 +157,28 @@ async fn toggleSim() -> impl Responder
     };
 
     HttpResponse::Ok()
+}
+
+#[derive(Serialize)]
+struct StateQuery
+{
+    state: String
+}
+
+#[get("/simState")]
+async fn getSimState() -> ActixResult<impl Responder>
+{
+    let mut stateJSON = StateQuery{ state: String::from("running") };
+    let state = simStateManager(false, None);
+    match state
+    {
+        SimulationState::RUNNING => stateJSON.state = String::from("running"),
+        SimulationState::STOP => stateJSON.state = String::from("stop"),
+        SimulationState::PAUSED => stateJSON.state = String::from("paused"),
+        _ => stateJSON.state = String::from("error")
+    }
+
+    Ok(web::Json(stateJSON))
 }
 
 // Exit the program entirely
@@ -206,7 +229,7 @@ struct TimeResponse
 #[get("/getTime")]
 async fn getSimTime() -> ActixResult<impl Responder>
 {
-    let rawTimes = simClockManager(false, None);
+    let rawTimes = simClockManager(false, false, None);
     let timesObj = TimeResponse {
         activeTime: rawTimes.0,
         runningTime: rawTimes.1
@@ -243,6 +266,7 @@ pub async fn initWebServer() -> std::io::Result<()>
             .service(setSimConfig)
             .service(getSimTime)
             .service(setSimTimer)
+            .service(getSimState)
         })
         .disable_signals()
         .bind(("127.0.0.1", 8080))?
