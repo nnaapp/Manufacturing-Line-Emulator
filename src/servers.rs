@@ -168,7 +168,7 @@ struct StateQuery
 #[get("/simState")]
 async fn getSimState() -> ActixResult<impl Responder>
 {
-    let stateJSON = StateQuery{ state: String::from("running") };
+    let mut stateJSON = StateQuery{ state: String::from("running") };
     let state = simStateManager(false, None);
     match state
     {
@@ -178,7 +178,7 @@ async fn getSimState() -> ActixResult<impl Responder>
         _ => stateJSON.state = String::from("error")
     }
 
-    Ok(web::Json(stateJSON));
+    Ok(web::Json(stateJSON))
 }
 
 // Exit the program entirely
