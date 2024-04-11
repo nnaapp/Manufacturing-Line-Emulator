@@ -44,15 +44,23 @@
         </div>
           <h2>Simulator Control Panel</h2>
       </div>    
-      <div class="card-body d-flex flex-column align-items-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+      <div class="card-body d-flex flex-column justify-content-center align-items-center">
         <!--<div class="col-12 ">
           <h4>Progress:</h4>
           <div class="progress mt-5">
             <div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 25%;" aria-valuenow='#txtTime' aria-valuemin="0" aria-valuemax=timeLim></div>
           </div>
           !-->
-          <h4>Time Running:</h4>
-          <p id="txtTimed"></p>
+          <div class="d-flex flex-row col-10 justify-content-around" 
+          style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+            <div class="d-flex flex-column col-4">
+              <h4>Time Unpaused:</h4>
+              <p id="txtTimeUnpaused"></p>
+            </div>
+            <div class="d-flex flex-column col-4">
+              <h4>Time Total:</h4>
+              <p id="txtTimeTotal"></p>
+            </div>
         </div>
       <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center">
         <button class="btn btn-lg btn-warning text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
@@ -99,16 +107,21 @@ $(document).ready(function(){
               },
               success: function(result) {
                 console.log(result);
-                $('#txtTime').text(result.activeTime / 1000000);
-                let seconds = result.activeTime / 1000000;
+
+                let activeSeconds = result.activeTime / 1000000;
                 const date = new Date(null)
-                date.setSeconds(seconds)
-                const timeFormatted = date.toISOString().substring(11,19)
-                $('#txtTimed').text(timeFormatted);
+                date.setSeconds(activeSeconds)
+                const timeActiveFormatted = date.toISOString().substring(11,19)
+                $('#txtTimeUnpaused').text(timeActiveFormatted);
+
+                let totalSeconds = result.runningTime / 1000000;
+                date.setSeconds(totalSeconds);
+                const timeTotalFormatted = date.toISOString().substring(11, 19);
+                $('#txtTimeTotal').text(timeTotalFormatted);
               }
             });
           }, 1000)
-          
+
           $.ajax({
             type: 'POST',
             url:'http://localhost:8080/setTimer?timer=' + encodeURIComponent(timeLim),
