@@ -36,38 +36,39 @@
         </div> 
       </div>
   </div>    
-      
-  <div id="ControlPanel" class="card col-12 bg-secondary mt-5" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
-      <div class="card-header col-12 text-center text-info">
-        <div class="d-flex justify-content-start">
-          <button class="col-1 btn btn-sm btn-danger text-center" type="button" id="btnBack" data-status="Back"> Back to Home </button>
-        </div>
-          <h2>Simulator Control Panel</h2>
-      </div>    
-      <div class="card-body d-flex flex-column justify-content-center align-items-center">
-        <!--<div class="col-12 ">
-          <h4>Progress:</h4>
-          <div class="progress mt-5">
-            <div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 25%;" aria-valuenow='#txtTime' aria-valuemin="0" aria-valuemax=timeLim></div>
-          </div>
-          !-->
-          <div class="d-flex flex-row col-12 align-items-center justify-content-center">
-            <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
-              <h4 class="mt-2">Time Unpaused:</h4>
-              <p id="txtTimeUnpaused">00:00:00</p>
-            </div>
-            <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
-              <h4 class="mt-2">Time Total:</h4>
-              <p id="txtTimeTotal">00:00:00</p>
-            </div>
-        </div>
-      <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
-        <button class="btn btn-lg btn-warning text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
-        <button class="btn btn-lg btn-success text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
-        <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
-      </div> 
-  </div>   
 
+  <div class="d-flex justify-content-center align-items-center">
+    <div id="ControlPanel" class="card col-12 col-lg-9 bg-secondary mt-5" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+        <div class="card-header col-12 text-center text-info">
+          <div class="d-flex justify-content-start">
+            <button class="col-1 btn btn-sm btn-danger text-center" type="button" id="btnBack" data-status="Back"> Back to Home </button>
+          </div>
+            <h2>Simulator Control Panel</h2>
+        </div>    
+        <div class="card-body d-flex flex-column justify-content-center align-items-center">
+          <!--<div class="col-12 ">
+            <h4>Progress:</h4>
+            <div class="progress mt-5">
+              <div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 25%;" aria-valuenow='#txtTime' aria-valuemin="0" aria-valuemax=timeLim></div>
+            </div>
+            !-->
+            <div class="d-flex flex-row col-12 align-items-center justify-content-center">
+              <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+                <h4 class="mt-2">Time Unpaused:</h4>
+                <p id="txtTimeUnpaused">00:00:00</p>
+              </div>
+              <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+                <h4 class="mt-2">Time Total:</h4>
+                <p id="txtTimeTotal">00:00:00</p>
+              </div>
+          </div>
+        <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
+          <button class="btn btn-lg btn-warning text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
+          <button class="btn btn-lg btn-success text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
+          <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
+        </div> 
+    </div>   
+  </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
