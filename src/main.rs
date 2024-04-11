@@ -50,6 +50,7 @@ fn main() -> Result<()>
         
         if state == SimulationState::RUNNING
         {
+            simClockManager(true, false, None);
             let _ = simulation(&mut addressSpace);
         }
         else if state == SimulationState::EXIT
@@ -134,7 +135,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         // Microsecond change in time between executions of loop
         deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
 
-        simClockManager(true, Some(deltaTime));
+        simClockManager(false, true, Some(deltaTime));
 
         if timerExists
         {

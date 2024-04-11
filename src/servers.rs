@@ -91,14 +91,14 @@ pub fn simConfigManager(updateConfig: bool, newConfig: Option<String>) -> String
     return CONFIG.read().ok().unwrap().clone();
 }
 
-pub fn simClockManager(updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
+pub fn simClockManager(zeroTimes: bool, updateTimes: bool, deltaTime: Option<u128>) -> (u128, u128)
 {
     static ACTIVETIME: RwLock<u128> = RwLock::new(0);
     static RUNTIME: RwLock<u128> = RwLock::new(0);
 
     let state = simStateManager(false, None);
 
-    if state == SimulationState::STOP
+    if zeroTimes
     {
         *RUNTIME.write().unwrap() = 0;
         *ACTIVETIME.write().unwrap() = 0;
@@ -206,7 +206,7 @@ struct TimeResponse
 #[get("/getTime")]
 async fn getSimTime() -> ActixResult<impl Responder>
 {
-    let rawTimes = simClockManager(false, None);
+    let rawTimes = simClockManager(false, false, None);
     let timesObj = TimeResponse {
         activeTime: rawTimes.0,
         runningTime: rawTimes.1
