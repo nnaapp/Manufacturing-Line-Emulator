@@ -147,7 +147,8 @@ async fn getPage() -> impl Responder
 #[post("/toggleSim")]
 async fn toggleSim() -> impl Responder 
 {
-    match simStateManager(false, None)
+    let state = simStateManager(false, None);
+    match state
     {
         SimulationState::RUNNING => simStateManager(true, Some(SimulationState::STOP)),
         SimulationState::STOP => simStateManager(true, Some(SimulationState::RUNNING)),
@@ -156,6 +157,28 @@ async fn toggleSim() -> impl Responder
     };
 
     HttpResponse::Ok()
+}
+
+#[derive(Serialize)]
+struct StateQuery
+{
+    state: String
+}
+
+#[get("/simState")]
+async fn getSimState() -> ActixResult<impl Responder>
+{
+    let stateJSON = StateQuery{ state: String::from("running") };
+    let state = simStateManager(false, None);
+    match state
+    {
+        SimulationState::RUNNING => stateJSON.state = String::from("running"),
+        SimulationState::STOP => stateJSON.state = String::from("stop"),
+        SimulationState::PAUSED => stateJSON.state = String::from("paused"),
+        _ => stateJSON.state = String::from("error")
+    }
+
+    Ok(web::Json(stateJSON));
 }
 
 // Exit the program entirely
@@ -243,6 +266,7 @@ pub async fn initWebServer() -> std::io::Result<()>
             .service(setSimConfig)
             .service(getSimTime)
             .service(setSimTimer)
+            .service(getSimState)
         })
         .disable_signals()
         .bind(("127.0.0.1", 8080))?
