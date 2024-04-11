@@ -51,18 +51,17 @@
             <div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 25%;" aria-valuenow='#txtTime' aria-valuemin="0" aria-valuemax=timeLim></div>
           </div>
           !-->
-          <div class="d-flex flex-row col-10 justify-content-around" 
-          style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
-            <div class="d-flex flex-column col-4">
-              <h4>Time Unpaused:</h4>
+          <div class="d-flex flex-row col-12 align-items-center justify-content-center">
+            <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+              <h4 class="mt-2">Time Unpaused:</h4>
               <p id="txtTimeUnpaused"></p>
             </div>
-            <div class="d-flex flex-column col-4">
-              <h4>Time Total:</h4>
+            <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
+              <h4 class="mt-2">Time Total:</h4>
               <p id="txtTimeTotal"></p>
             </div>
         </div>
-      <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center">
+      <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
         <button class="btn btn-lg btn-warning text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
         <button class="btn btn-lg btn-success text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
         <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
@@ -225,7 +224,6 @@ $(document).ready(function(){
           running = false
           $('#btnPause').prop('disabled', true)
           $('#btnResume').prop('disabled', true)
-          //possibly stuck in disabled? no bc successful start click will change it back?
         }
       })
     }
