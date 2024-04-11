@@ -54,11 +54,11 @@
           <div class="d-flex flex-row col-12 align-items-center justify-content-center">
             <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
               <h4 class="mt-2">Time Unpaused:</h4>
-              <p id="txtTimeUnpaused"></p>
+              <p id="txtTimeUnpaused">00:00:00</p>
             </div>
             <div class="d-flex flex-column h-25 col-3 mx-2 align-items-center justify-content-center" style="display: none; border-radius:0.15rm; border: solid #375a7f 3px;">
               <h4 class="mt-2">Time Total:</h4>
-              <p id="txtTimeTotal"></p>
+              <p id="txtTimeTotal">00:00:00</p>
             </div>
         </div>
       <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
@@ -79,6 +79,54 @@
 
 <script>
 $(document).ready(function(){
+  $.ajax({
+    type: 'GET',
+    url: 'http://localhost:8080/simState',
+    error: function(error) {
+      console.log(error);
+    },
+    success: function(success) {
+      console.log(success);
+      if (success.state == "running" || success.state == "paused") {
+        var timeTracker = window.setInterval(function() {
+          $.ajax({
+            type: 'GET',
+            url: 'http://localhost:8080/getTime',
+            error: function(e) {
+              console.log(e);
+            },
+            success: function(result) {
+              console.log(result);
+
+              let activeSeconds = result.activeTime / 1000000;
+              const date = new Date(null)
+              date.setSeconds(activeSeconds)
+              const timeActiveFormatted = date.toISOString().substring(11,19)
+              $('#txtTimeUnpaused').text(timeActiveFormatted);
+
+              let totalSeconds = result.runningTime / 1000000;
+              date.setSeconds(totalSeconds);
+              const timeTotalFormatted = date.toISOString().substring(11, 19);
+              $('#txtTimeTotal').text(timeTotalFormatted);
+            }
+          });
+        }, 1000);
+
+        $('#StartPage').hide();
+        $('#ControlPanel').show();
+
+        if (success.state == "running") {
+          $('#btnPause').prop('disabled', false)
+          $('#btnResume').prop('disabled', true)
+        }
+        else {
+          $('#btnPause').prop('disabled', true)
+          $('#btnResume').prop('disabled', false)
+        }
+      }
+    }
+  })
+
   // disables the pause button until the start button has been clicked
   $('#btnPause').prop('disabled', true);
   let running = false
