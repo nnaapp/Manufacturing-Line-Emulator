@@ -10,7 +10,7 @@ mod servers;
 use servers::*;
 
 use std::borrow::BorrowMut;
-use std::time::{UNIX_EPOCH,SystemTime,Duration,Instant};
+use std::time::Instant;
 use std::collections::HashMap;
 use std::thread;
 use std::cell::{RefCell, RefMut};
@@ -339,6 +339,9 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
+// Set up the OPC server with tags, folders, etc for every machine, and give each machine
+// its variables/values to be updated later when the server polls
+// TODO: functionize the variable-adding
 fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &str) -> HashMap<String, NodeId>
 {
     let machinesHashMap = machinesHashMap.values();
@@ -446,6 +449,9 @@ fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMa
 fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCell<Machine>>, nodeIDs: &HashMap<String, NodeId>, ids: &Vec<String>)
 {
     let now = DateTime::now();
+    // For every machine ID, get that machine and update all of its values on the OPC server
+    // as well as provide a current timestamp
+    // (maybe we should have this respect simSpeed, in case the user is running at multiplied timescale)
     for id in ids.iter()
     {
         let mut machine = machines.get(id).expect("Machine ceased to exist.").borrow_mut();
