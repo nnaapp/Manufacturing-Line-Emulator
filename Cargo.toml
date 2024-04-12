@@ -19,6 +19,7 @@ opcua = { version = "0.12.0", optional = true }
 rand = { version = "0.8.5", optional = true }
 serde = { version = "1.0.196", features = ["derive"], optional = true }
 serde_json = { version = "1.0.113", optional = true }
+jsonschema = "0.17.1"
 
 [features]
 build-simulator = ["local-ip-address", "log2", "opcua", "rand", "serde", "serde_json", "actix-web", "actix-files"]

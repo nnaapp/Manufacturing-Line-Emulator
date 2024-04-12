@@ -5,6 +5,7 @@ use machine::*;
 
 mod json;
 use json::*;
+use jsonschema::JSONSchema;
 
 mod servers;
 use servers::*;
@@ -66,8 +67,13 @@ fn main() -> Result<()>
 fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Result<()>
 {
     // Tuple of line data structures and settings
-    let factoryData = factorySetup();
+    let factoryDataOption = factorySetup();
 
+    if factoryDataOption.is_none(){
+        return Ok(());
+    }
+
+    let factoryData = factoryDataOption.unwrap();
     // HashMap<String, RefCell<Machine>> containing all machines
     let mut machines = factoryData.0;
     // Immutable reference vector containing every machine ID
@@ -222,8 +228,8 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     Ok(())
 }
 
-fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>, 
-                        HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)
+fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>, 
+                        HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)>
 {
     let file_path = simConfigManager(false, None);
     let json_data: String;
@@ -233,7 +239,34 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
     } else {
         json_data = read_json_file(format!("./data/{}", file_path).as_str());
     }
+    
+   
+    let data_as_value: serde_json::Value = serde_json::from_str(&json_data).expect("Failed to parse JSON");
+
+    // JSON file validation using JSON schema
+    let schema_string = read_json_file("./data/schema.json");
+    let schema_data = serde_json::from_str(&schema_string).expect("Failed to parse Schema");
+
+    let compiled_schema = JSONSchema::compile(&schema_data).expect("Could not compile schema");
+
+    // TODO: should there be a message for valid
+    if compiled_schema.is_valid(&data_as_value) == true {
+        println!("Valid JSON file format");
+    }
+   
+    let result = compiled_schema.validate(&data_as_value);
+    if let Err(errors) = result {
+        for error in errors {
+            println!("Validation error: {}", error);
+            println!("Instance path: {}", error.instance_path);
+        }
+        // entering non existent file name exits already
+        // TODO: terminate, retry, or continue with printed error codes
+        simStateManager(true, Some(SimulationState::STOP));
+        return None;
+    }
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
+
 
     info!("Factory Name: {}", data.factory.name);
     info!("Description: {}", data.factory.description);
@@ -330,7 +363,7 @@ fn factorySetup() -> (HashMap<String, RefCell<Machine>>, Vec<String>,
         conveyorIDs.push(id.clone());
     }
 
-    return (machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRateUs, factoryRuntimeUs);
+    return Some((machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRateUs, factoryRuntimeUs));
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs

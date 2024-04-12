@@ -1,0 +1,213 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/MyType",
+    "definitions": {
+        "MyType": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "factory": {
+                    "$ref": "#/definitions/Factory"
+                }
+            },
+            "required": [
+                "factory"
+            ],
+            "title": "MyType"
+        },
+        "Factory": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "simSpeed": {
+                    "type": "integer"
+                },
+                "pollRateMs": {
+                    "type": "integer"
+                },
+                "debounceRateInPolls": {
+                    "type": "integer"
+                },
+                "runtimeSec": {
+                    "type": "integer"
+                },
+                "machines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Machine"
+                    }
+                },
+                "conveyors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Conveyor"
+                    }
+                }
+            },
+            "required": [
+                "conveyors",
+                "debounceRateInPolls",
+                "description",
+                "machines",
+                "name",
+                "pollRateMs",
+                "runtimeSec",
+                "simSpeed"
+            ],
+            "title": "Factory"
+        },
+        "Conveyor": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "beltSpeedMs": {
+                    "type": "integer"
+                },
+                "inputID": {
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "beltSpeedMs",
+                "capacity",
+                "id",
+                "inputID"
+            ],
+            "title": "Conveyor"
+        },
+        "Machine": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "cost": {
+                    "type": "integer"
+                },
+                "throughput": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "faults": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Fault"
+                    }
+                },
+                "inputIDs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "inputBehavior": {
+                    "type": "string"
+                },
+                "inputSpeedMs": {
+                    "type": "integer"
+                },
+                "inputCapacity": {
+                    "type": "integer"
+                },
+                "processingBehavior": {
+                    "type": "string"
+                },
+                "processingSpeedMs": {
+                    "type": "integer"
+                },
+                "outputIDs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "outputBehavior": {
+                    "type": "string"
+                },
+                "outputSpeedMs": {
+                    "type": "integer"
+                },
+                "outputCapacity": {
+                    "type": "integer"
+                },
+                "sensor": {
+                    "type": "boolean"
+                },
+                "sensorBaseline": {
+                    "type": "integer"
+                },
+                "sensorVariance": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "cost",
+                "faults",
+                "id",
+                "inputBehavior",
+                "inputCapacity",
+                "inputIDs",
+                "inputSpeedMs",
+                "outputBehavior",
+                "outputCapacity",
+                "outputIDs",
+                "outputSpeedMs",
+                "processingBehavior",
+                "processingSpeedMs",
+                "sensor",
+                "sensorBaseline",
+                "sensorVariance",
+                "state",
+                "throughput"
+            ],
+            "title": "Machine"
+        },
+        "Fault": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "faultChance": {
+                    "type": "number"
+                },
+                "faultMessage": {
+                    "type": "string"
+                },
+                "faultTimeHighSec": {
+                    "type": "integer"
+                },
+                "faultTimeLowSec": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "faultChance",
+                "faultMessage",
+                "faultTimeHighSec",
+                "faultTimeLowSec"
+            ],
+            "title": "Fault"
+        }
+    }
+}
