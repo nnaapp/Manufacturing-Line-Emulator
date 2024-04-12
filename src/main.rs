@@ -249,7 +249,6 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
 
     let compiled_schema = JSONSchema::compile(&schema_data).expect("Could not compile schema");
 
-    // TODO: should there be a message for valid
     if compiled_schema.is_valid(&data_as_value) == true {
         println!("Valid JSON file format");
     }
@@ -260,8 +259,6 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
             println!("Validation error: {}", error);
             println!("Instance path: {}", error.instance_path);
         }
-        // entering non existent file name exits already
-        // TODO: terminate, retry, or continue with printed error codes
         simStateManager(true, Some(SimulationState::STOP));
         return None;
     }
