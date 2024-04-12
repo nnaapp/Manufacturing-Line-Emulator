@@ -2,7 +2,7 @@
     "factory": {
       "name": "N/A",
       "description": "Test for what happens when an input belt is fed into a producer",
-      "simSpeed": 8.0,
+      "simSpeed": 1.0,
       "pollRateMs": 100,
       "debounceRateInPolls": 10,
       "machines": [

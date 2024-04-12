@@ -10,7 +10,7 @@ mod servers;
 use servers::*;
 
 use std::borrow::BorrowMut;
-use std::time::{UNIX_EPOCH,SystemTime,Duration};
+use std::time::{UNIX_EPOCH,SystemTime,Duration,Instant};
 use std::collections::HashMap;
 use std::thread;
 use std::cell::{RefCell, RefMut};
@@ -73,6 +73,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     }
 
     let factoryData = factoryDataOption.unwrap();
+
     // HashMap<String, RefCell<Machine>> containing all machines
     let mut machines = factoryData.0;
     // Immutable reference vector containing every machine ID
@@ -91,18 +92,16 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     // Set up the server with the new machine data, and get a Hashmap<String, NodeId> of all nodes
     // on the server
     let nodeIDs = serverSetup(addressSpace, machines.clone(), "MyLine");
-    
-    // Start represents current SystemTime, 
-    // iter/prevTime represent milliseconds since epoch time for the current and previous iteration of loop,
-    // deltaTime represents milliseconds time between previous and current iteration of loop.
-    let mut start = SystemTime::now();
-    let mut iterTime:Duration = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");
-    let mut prevTime:Duration = iterTime;
+
+    // Time at the instant of beginning the simulation, used to calculate
+    // time passage based on the elapsed time from this moment in microseconds
+    let start = Instant::now();
+    // Two times so we can calculate how long loop iterations took
+    let mut iterTime = start.elapsed().as_micros();
+    let mut prevTime = iterTime;
+    // deltaTime, or dT, is the difference in time between two loop iterations
     let mut deltaTime:u128;
 
-    // let mut dtPeak: u128 = 0;
-    // let mut dtSum: u128 = 0;
-    // let mut dtAmount: u128 = 0;
 
     // In the case the user sets a time limit, this will be used to stop the sim when the time has passed
     let mut executionTimer = 0; // Microseconds counter
@@ -113,43 +112,36 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     // and perform the simulation logic
     let mut pauseHappened = false;
     while simStateManager(false, None) != SimulationState::STOP && simStateManager(false, None) != SimulationState::EXIT
-    {                   
-        start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");  
+    {               
+        // Time at start of loop    
+        iterTime = start.elapsed().as_micros();
 
         // Microsecond change in time between executions of loop
-        deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
+        deltaTime = ((iterTime - prevTime) as f64 * simSpeed) as u128;
 
         // Just log that a pause happened and skip all of the simulating if the pause signal is set
         if simStateManager(false, None) == SimulationState::PAUSED 
         {
             // Track time while paused for a total runtime tracker
             simClockManager(false, true, Some(deltaTime));
+            // Log loop start time, to calculate difference in time later
             prevTime = iterTime;
             pauseHappened = true; 
             continue; 
         }
         
-        // Find deltatime between loop iterations
-        start = SystemTime::now();
-        iterTime = start.duration_since(UNIX_EPOCH).expect("Failure while getting epoch time in microseconds");  
         // If a pause occurred, we don't want the huge time gap between this iteration
-        // and last iteration to cause a speed up in production. Setting the two times 
-        // equal to each other mitigates that, making it like no time passed.
+        // and last iteration to cause a speed up in production. Setting dT to 0 fixes this.
         if pauseHappened
         {
             pauseHappened = false;
-            prevTime = iterTime;
-            deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
+            deltaTime = 0;
         }   
 
-        // if deltaTime > dtPeak { dtPeak = deltaTime; }
-        // dtSum += deltaTime;
-        // dtAmount += 1;
-
-
+        // Update runtime clocks with new deltaTime
         simClockManager(false, true, Some(deltaTime));
 
+        // If there is an execution time limit set, check it
         if timerExists
         {
             executionTimer += deltaTime;
@@ -161,8 +153,9 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
             }
         }
 
-        // rng is used to seed the update with any random integer, which is used for any rng dependent operations
-        // update all machines
+        // For every machine, update its state by checking if it needs to perform
+        // any actions, based on the amount of time that has passed.
+        // This works on a sort of "tick" system.
         for id in machineIDs.iter()
         {
             machines.get_mut(id)
@@ -171,7 +164,10 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
                     .get_mut()
                     .update(&mut conveyors, deltaTime);
         }
-        // update all conveyor belts
+        
+        // For every belt, update its state by checking if it needs to
+        // move anything, give anything, or take anything. This also works
+        // on a tick system.
         for id in conveyorIDs.iter()
         {
             // Get reference to current conveyor
@@ -198,7 +194,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
             serverPoll(&mut addressSpace, &machines, &nodeIDs, &machineIDs);
         }
 
-        // Log system time at the start of this iteration, for use in next iteration
+        // Log loop start time, to calculate difference in time later
         prevTime = iterTime;
     }
     // TODO: make sure this works with new web controller system
@@ -220,6 +216,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
 
     // }
 
+    // If we are outside the main loop, the simulation has ended, so we will wipe the data from the OPC server.
     for nodeID in nodeIDs.values().cloned().collect::<Vec<NodeId>>()
     {
         addressSpace.write().delete(&nodeID, true);
