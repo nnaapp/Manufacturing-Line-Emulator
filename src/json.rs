@@ -50,7 +50,6 @@ pub struct JSONFactory {
     pub simSpeed: f64,
     pub pollRateMs: u128,
     pub debounceRateInPolls: i32,
-    pub runtimeSec: u128,
     pub machines: Vec<JSONMachine>,
     pub conveyors: Vec<JSONConveyor>,
 }

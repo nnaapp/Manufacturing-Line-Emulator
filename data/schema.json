@@ -34,9 +34,6 @@
                 "debounceRateInPolls": {
                     "type": "integer"
                 },
-                "runtimeSec": {
-                    "type": "integer"
-                },
                 "machines": {
                     "type": "array",
                     "items": {
@@ -57,7 +54,6 @@
                 "machines",
                 "name",
                 "pollRateMs",
-                "runtimeSec",
                 "simSpeed"
             ],
             "title": "Factory"

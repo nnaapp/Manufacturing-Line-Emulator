@@ -11,6 +11,10 @@ use actix_web::{get, post, App, HttpResponse, HttpServer, Responder, web, Result
 
 use serde::{Serialize, Deserialize};
 
+use crate::json;
+use json::*;
+use jsonschema::JSONSchema;
+
 pub fn initOPCServer() -> Server
 {
     let ipAddress = local_ip().expect("IP could not be found.");
@@ -143,11 +147,57 @@ async fn getPage() -> impl Responder
         .body(include_str!("../data/index.html"))
 }
 
+#[derive(Serialize)]
+struct MessageResponse
+{
+    message: String
+}
+
 // Stop or start the simulation but not the program
 #[post("/toggleSim")]
-async fn toggleSim() -> impl Responder 
+async fn toggleSim() -> ActixResult<impl Responder>
 {
     let state = simStateManager(false, None);
+
+    if state == SimulationState::STOP
+    {
+        let configPath = simConfigManager(false, None);
+        let jsonData: String;
+        if in_container::in_container()
+        {
+            jsonData = read_json_file(format!("/home/data/{}", configPath).as_str());
+        } else {
+            jsonData = read_json_file(format!("./data/{}", configPath).as_str());
+        }
+
+
+        let data_as_value: serde_json::Value = serde_json::from_str(&jsonData).expect("Failed to parse JSON");
+
+        // JSON file validation using JSON schema
+        let schema_string = read_json_file("./data/schema.json");
+        let schema_data = serde_json::from_str(&schema_string).expect("Failed to parse Schema");
+
+        let compiled_schema = JSONSchema::compile(&schema_data).expect("Could not compile schema");
+
+        // TODO: should there be a message for valid
+        if compiled_schema.is_valid(&data_as_value) == true {
+            println!("Valid JSON file format");
+        }
+
+        let result = compiled_schema.validate(&data_as_value);
+        if let Err(errors) = result {
+            for error in errors {
+                println!("Validation error: {}", error);
+                println!("Instance path: {}", error.instance_path);
+            }
+            // entering non existent file name exits already
+            // TODO: terminate, retry, or continue with printed error codes
+            return Ok(web::Json(MessageResponse {message: String::from("JSON file has invalid structure.")}));
+        }
+
+        // If we get here, the JSON is correct and we can continue to turn the simulation on
+    }
+
     match state
     {
         SimulationState::RUNNING => simStateManager(true, Some(SimulationState::STOP)),
@@ -156,7 +206,7 @@ async fn toggleSim() -> impl Responder
         _ => simStateManager(true, Some(SimulationState::STOP))
     };
 
-    HttpResponse::Ok()
+    Ok(web::Json(MessageResponse {message: String::from("success")}))
 }
 
 #[derive(Serialize)]

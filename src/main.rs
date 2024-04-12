@@ -229,7 +229,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
 }
 
 fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>, 
-                        HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128, u128)>
+                        HashMap<String, RefCell<ConveyorBelt>>, Vec<String>, f64, u128)>
 {
     let file_path = simConfigManager(false, None);
     let json_data: String;
@@ -239,32 +239,9 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
     } else {
         json_data = read_json_file(format!("./data/{}", file_path).as_str());
     }
-    
-   
-    let data_as_value: serde_json::Value = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
-    // JSON file validation using JSON schema
-    let schema_string = read_json_file("./data/schema.json");
-    let schema_data = serde_json::from_str(&schema_string).expect("Failed to parse Schema");
-
-    let compiled_schema = JSONSchema::compile(&schema_data).expect("Could not compile schema");
-
-    // TODO: should there be a message for valid
-    if compiled_schema.is_valid(&data_as_value) == true {
-        println!("Valid JSON file format");
-    }
-   
-    let result = compiled_schema.validate(&data_as_value);
-    if let Err(errors) = result {
-        for error in errors {
-            println!("Validation error: {}", error);
-            println!("Instance path: {}", error.instance_path);
-        }
-        // entering non existent file name exits already
-        // TODO: terminate, retry, or continue with printed error codes
-        simStateManager(true, Some(SimulationState::STOP));
-        return None;
-    }
+    // If we get here, the web service already checked if the JSON has a valid structure
+    // using json schemas, so we can parse this without worrying about a panic
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
 
@@ -272,12 +249,10 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
     info!("Description: {}", data.factory.description);
     info!("Simulation Speed: {} ", data.factory.simSpeed);
     info!("Poll Rate: {} milliseconds", data.factory.pollRateMs);
-    info!("Runtime: {} seconds", data.factory.runtimeSec);
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 
     let factoryPollRateUs = data.factory.pollRateMs * 1000; // milliseconds to microseconds
-    let factoryRuntimeUs = data.factory.runtimeSec * 1000 * 1000; // seconds to microseconds
 
     let mut machines = HashMap::<String, RefCell<Machine>>::new();
     let mut conveyors = HashMap::<String, RefCell<ConveyorBelt>>::new();
@@ -363,7 +338,7 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
         conveyorIDs.push(id.clone());
     }
 
-    return Some((machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRateUs, factoryRuntimeUs));
+    return Some((machines, machineIDs, conveyors, conveyorIDs, factorySpeed, factoryPollRateUs));
 }
 
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
