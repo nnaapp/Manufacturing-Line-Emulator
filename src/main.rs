@@ -5,7 +5,6 @@ use machine::*;
 
 mod json;
 use json::*;
-use jsonschema::JSONSchema;
 
 mod servers;
 use servers::*;
@@ -141,6 +140,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         {
             pauseHappened = false;
             prevTime = iterTime;
+            deltaTime = ((iterTime.as_micros() as f64 * simSpeed) as u128) - (((prevTime.as_micros() as f64) * simSpeed) as u128);
         }   
 
         // if deltaTime > dtPeak { dtPeak = deltaTime; }
