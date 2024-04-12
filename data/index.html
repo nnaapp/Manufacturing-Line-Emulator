@@ -82,7 +82,7 @@
 $(document).ready(function(){
   $.ajax({
     type: 'GET',
-    url: 'http://localhost:8080/simState',
+    url: 'http://' + location.host + '/simState',
     error: function(error) {
       console.log(error);
     },
@@ -92,7 +92,7 @@ $(document).ready(function(){
         var timeTracker = window.setInterval(function() {
           $.ajax({
             type: 'GET',
-            url: 'http://localhost:8080/getTime',
+            url: 'http://' + location.host + '/getTime',
             error: function(e) {
               console.log(e);
             },
@@ -137,7 +137,7 @@ $(document).ready(function(){
     if(strStatus == 'start'){
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/setConfig?config=' + encodeURIComponent($('#txtFileName').val()),
+        url: 'http://' + location.host + '/setConfig?config=' + encodeURIComponent($('#txtFileName').val()),
         error: function(error){
           console.log(error)
         },
@@ -149,7 +149,7 @@ $(document).ready(function(){
           var timeTracker = window.setInterval(function() {
             $.ajax({
               type: 'GET',
-              url: 'http://localhost:8080/getTime',
+              url: 'http://' + location.host + '/getTime',
               error: function(e) {
                 console.log(e);
               },
@@ -172,14 +172,14 @@ $(document).ready(function(){
 
           $.ajax({
             type: 'POST',
-            url:'http://localhost:8080/setTimer?timer=' + encodeURIComponent(timeLim),
+            url:'http://' + location.host + '/setTimer?timer=' + encodeURIComponent(timeLim),
             error: function(error){
               console.log(error)
             },
             success: function(){
               $.ajax({
                 type: 'POST',
-                url: 'http://localhost:8080/toggleSim',
+                url: 'http://' + location.host + '/toggleSim',
                 error: function(error){
                   console.log(error)
                 },
@@ -207,7 +207,7 @@ $(document).ready(function(){
     if (running == true){ 
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/toggleSim',
+        url: 'http://' + location.host + '/toggleSim',
         error: function(error){
           console.log(error)
         },
@@ -231,7 +231,7 @@ $(document).ready(function(){
   $('#btnPause').on('click',function(){
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/suspendSim',
+        url: 'http://' + location.host + '/suspendSim',
         error: function(error){
           console.log(error)
         },
@@ -247,7 +247,7 @@ $(document).ready(function(){
   $('#btnResume').on('click',function(){
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/suspendSim',
+        url: 'http://' + location.host + '/suspendSim',
         error: function(error){
           console.log(error)
         },
@@ -264,7 +264,7 @@ $(document).ready(function(){
     if(strStatus == 'Close'){
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/toggleSim',
+        url: 'http://' + location.host + '/toggleSim',
         error: function(error){
           console.log(error)
         },
@@ -284,7 +284,7 @@ $(document).ready(function(){
     if(strStatus == 'exit'){
       $.ajax({
         type: 'POST',
-        url: 'http://localhost:8080/exitSim',
+        url: 'http://' + location.host + '/exitSim',
         error: function(error){
           console.log(error)
         },

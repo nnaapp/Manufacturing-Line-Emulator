@@ -257,6 +257,8 @@ async fn setSimTimer(info: web::Query<TimerQuery>) -> impl Responder
 #[actix_web::main]
 pub async fn initWebServer() -> std::io::Result<()>
 {
+    let port = 8080;
+    info!("Control Panel URL: http://{}:{}/", local_ip().expect("IP could not be found."), port);
     HttpServer::new(|| {
         App::new()
             .service(getPage)
@@ -269,7 +271,7 @@ pub async fn initWebServer() -> std::io::Result<()>
             .service(getSimState)
         })
         .disable_signals()
-        .bind(("127.0.0.1", 8080))?
+        .bind((local_ip().expect("IP could not be found."), port))?
         .run()
         .await
 }
