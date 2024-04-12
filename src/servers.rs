@@ -161,15 +161,19 @@ async fn toggleSim() -> ActixResult<impl Responder>
 
     if state == SimulationState::STOP
     {
-        let configPath = simConfigManager(false, None);
-        let jsonData: String;
+        let mut configPath = simConfigManager(false, None);
+
         if in_container::in_container()
         {
-            jsonData = read_json_file(format!("/home/data/{}", configPath).as_str());
-        } else {
-            jsonData = read_json_file(format!("./data/{}", configPath).as_str());
+            configPath = format!("/home/data/{}", configPath);
         }
-
+        else
+        {
+            configPath = format!("./data/{}", configPath);
+        }
+        
+        
+        let jsonData = read_json_file(configPath.as_str());
 
         let data_as_value: serde_json::Value = serde_json::from_str(&jsonData).expect("Failed to parse JSON");
 

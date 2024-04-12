@@ -5,7 +5,6 @@
       "simSpeed": 8.0,
       "pollRateMs": 100,
       "debounceRateInPolls": 10,
-      "runtimeSec": 600,
       "machines": [
         {
             "id": "Producer",

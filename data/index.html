@@ -80,6 +80,32 @@
 
 <script>
 $(document).ready(function(){
+
+  var timeTracker = window.setInterval(function() {
+    $.ajax({
+      type: 'GET',
+      url: 'http://' + location.host + '/getTime',
+      error: function(e) {
+        console.log(e);
+      },
+      success: function(result) {
+        console.log(result);
+
+        let activeSeconds = result.activeTime / 1000000;
+        const activeDate = new Date(null)
+        activeDate.setSeconds(activeSeconds)
+        const timeActiveFormatted = activeDate.toISOString().substring(11,19)
+        $('#txtTimeUnpaused').text(timeActiveFormatted);
+
+        let totalSeconds = result.runningTime / 1000000;
+        const totalDate = new Date(null)
+        totalDate.setSeconds(totalSeconds);
+        const timeTotalFormatted = totalDate.toISOString().substring(11, 19);
+        $('#txtTimeTotal').text(timeTotalFormatted);
+      }
+    });
+  }, 1000)
+
   $.ajax({
     type: 'GET',
     url: 'http://' + location.host + '/simState',
@@ -146,29 +172,6 @@ $(document).ready(function(){
           if (timeLim == '' || timeLim == undefined){
             timeLim = 0
           }
-          var timeTracker = window.setInterval(function() {
-            $.ajax({
-              type: 'GET',
-              url: 'http://' + location.host + '/getTime',
-              error: function(e) {
-                console.log(e);
-              },
-              success: function(result) {
-                console.log(result);
-
-                let activeSeconds = result.activeTime / 1000000;
-                const date = new Date(null)
-                date.setSeconds(activeSeconds)
-                const timeActiveFormatted = date.toISOString().substring(11,19)
-                $('#txtTimeUnpaused').text(timeActiveFormatted);
-
-                let totalSeconds = result.runningTime / 1000000;
-                date.setSeconds(totalSeconds);
-                const timeTotalFormatted = date.toISOString().substring(11, 19);
-                $('#txtTimeTotal').text(timeTotalFormatted);
-              }
-            });
-          }, 1000)
 
           $.ajax({
             type: 'POST',
