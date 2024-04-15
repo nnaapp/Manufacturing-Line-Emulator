@@ -6,6 +6,7 @@ use log2::*;
 
 use std::path::PathBuf;
 use std::sync::RwLock;
+use std::fs::metadata;
 
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder, web, Result as ActixResult};
 
@@ -126,9 +127,9 @@ pub fn simClockManager(zeroTimes: bool, updateTimes: bool, deltaTime: Option<u12
     return (activetime, runtime);
 }
 
-pub fn simTimerManager(updateTimer: bool, newTimer: Option<u128>) -> u128
+pub fn simTimerManager(updateTimer: bool, newTimer: Option<i128>) -> i128
 {
-    static TIME_LIMIT: RwLock<u128> = RwLock::new(0);
+    static TIME_LIMIT: RwLock<i128> = RwLock::new(0);
 
     if updateTimer && newTimer.is_some()
     {
@@ -161,6 +162,16 @@ async fn toggleSim() -> ActixResult<impl Responder>
 
     if state == SimulationState::STOP
     {
+        //////////////////////
+        // Timer validation //
+        if simTimerManager(false, None) < 0
+        {
+            return Ok(web::Json(MessageResponse {message: String::from("Time cannot be negative.")}));
+        }
+        //////////////////////
+        
+        ////////////////////////////
+        // Config file validation //
         let mut configPath = simConfigManager(false, None);
 
         if in_container::in_container()
@@ -171,7 +182,11 @@ async fn toggleSim() -> ActixResult<impl Responder>
         {
             configPath = format!("./data/{}", configPath);
         }
-        
+
+        if let Err(_e) = metadata(configPath.clone())
+        {
+            return Ok(web::Json(MessageResponse {message: String::from("File does not exist.")}));
+        }
         
         let jsonData = read_json_file(configPath.as_str());
 
@@ -183,23 +198,18 @@ async fn toggleSim() -> ActixResult<impl Responder>
 
         let compiled_schema = JSONSchema::compile(&schema_data).expect("Could not compile schema");
 
-        // TODO: should there be a message for valid
-        if compiled_schema.is_valid(&data_as_value) == true {
-            println!("Valid JSON file format");
-        }
-
         let result = compiled_schema.validate(&data_as_value);
         if let Err(errors) = result {
             for error in errors {
                 println!("Validation error: {}", error);
                 println!("Instance path: {}", error.instance_path);
             }
-            // entering non existent file name exits already
-            // TODO: terminate, retry, or continue with printed error codes
+
             return Ok(web::Json(MessageResponse {message: String::from("JSON file has invalid structure.")}));
         }
 
-        // If we get here, the JSON is correct and we can continue to turn the simulation on
+        // If we get here, the JSON is correct and we can continue to turn the simulation on//
+        //////////////////////////////////////////////////////////////////////////////////////
     }
 
     match state
@@ -296,14 +306,14 @@ async fn getSimTime() -> ActixResult<impl Responder>
 #[derive(Deserialize)]
 struct TimerQuery
 {
-    timer: u64
+    timer: i64
 }
 
 #[post("/setTimer")]
 async fn setSimTimer(info: web::Query<TimerQuery>) -> impl Responder
 {
     // Converts received time into microseconds, web service expects minutes
-    simTimerManager(true, Some(info.timer.clone() as u128 * 1000000 * 60));
+    simTimerManager(true, Some(info.timer.clone() as i128 * 1000000 * 60));
     HttpResponse::Ok()
 }
 

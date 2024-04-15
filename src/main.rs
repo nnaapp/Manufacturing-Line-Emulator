@@ -105,7 +105,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
 
     // In the case the user sets a time limit, this will be used to stop the sim when the time has passed
     let mut executionTimer = 0; // Microseconds counter
-    let timerLimit = simTimerManager(false, None); // Time limit for the sim
+    let timerLimit = simTimerManager(false, None) as u128; // Time limit for the sim
     let timerExists = timerLimit != 0; // If this resolves to true, a timer was set
 
     // Loop until the signal is given to stop this simulation or exit the entire program
@@ -197,24 +197,6 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
         // Log loop start time, to calculate difference in time later
         prevTime = iterTime;
     }
-    // TODO: make sure this works with new web controller system
-    // let file = File::create("log.txt")?;
-    // writeln!(&file, "Avg Cycle Time: {}", dtSum / dtAmount)?;
-    // writeln!(&file, "Peak Cycle Time: {}", dtPeak)?;
-    // writeln!(&file, "")?;
-    // for id in machineIDs.iter()
-    // {
-    //     let machine = machines.get(id).expect("Machine ceased to exist.").borrow();
-    //     let efficiencyCount = machine.producedCount as f64 / (machine.throughput as f64 * (runtimeUs as f64 / machine.processingTickSpeedUs as f64));
-
-    //     writeln!(&file, "Machine ID: {}", machines.get(id).expect("Machine ceased to exist").borrow().id)?;
-    //     writeln!(&file, "Machine Input: {}", machines.get(id).expect("Machine ceased to exist").borrow().consumedCount)?;
-    //     writeln!(&file, "Machine Output: {}", machines.get(id).expect("Machine ceased to exist").borrow().producedCount)?;
-    //     writeln!(&file, "State Changes: {}", machines.get(id).expect("Machine ceased to exist").borrow().stateChangeCount)?;
-    //     writeln!(&file, "Efficiency: {}", efficiencyCount)?;
-    //     writeln!(&file, "")?;
-
-    // }
 
     // If we are outside the main loop, the simulation has ended, so we will wipe the data from the OPC server.
     for nodeID in nodeIDs.values().cloned().collect::<Vec<NodeId>>()
@@ -341,7 +323,6 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
 // Returns a tuple containing the new Server, as well as a HashMap of machine IDs to OPC NodeIDs
 // Set up the OPC server with tags, folders, etc for every machine, and give each machine
 // its variables/values to be updated later when the server polls
-// TODO: functionize the variable-adding
 fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMap: HashMap<String, RefCell<Machine>>, lineName: &str) -> HashMap<String, NodeId>
 {
     let machinesHashMap = machinesHashMap.values();
@@ -374,8 +355,33 @@ fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMa
             
             // Vector of this machine's variable nodes
             let mut variables = Vec::<Variable>::new();
+
+            // Macro to add a new variable to the server, used in the form of:
+            // add_server_variable!(variable_name, machine_field, type), 
+            // eg. cost_amount, cost (for machine.cost), u64 (to cast the value to u64)
+            //
+            // This is done as a macro because it's impossible to vary the field of a 
+            // struct you add in a function, and this is also the "default case", some
+            // server variables deviate from this and are done manually.
+            macro_rules! add_server_variable
+            {
+                ($var_name:expr, $($machine_field:ident).+, $type:ty) => {
+                    {
+                        let nodeName = $var_name;
+                        let nodeID = NodeId::new(ns, format!("{machineID}-{nodeName}"));
+                        variables.push(
+                            Variable::new(&nodeID, 
+                            nodeName,
+                            nodeName,
+                            machines[i].$($machine_field).+ as $type));
+                        nodeIDs.insert(format!("{machineID}-{nodeName}"), nodeID);
+                    }
+                }
+            }
             
             // State node initialization
+            // Done without macro for example of what macro does, and due to special case of converting
+            // state to string with .to_string()
             let stateVarName = "state";
             let stateNodeID = NodeId::new(ns, format!("{machineID}-state"));
             variables.push(
@@ -385,6 +391,8 @@ fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMa
                 machines[i].state.to_string()));
             nodeIDs.insert(format!("{machineID}-state"), stateNodeID);
 
+            // Fault message node initialization
+            // Done without macro due to the fault message being an option, unlike any other field used here
             let faultMsgVarName = "fault-message";
             let faultMsgNodeID = NodeId::new(ns, format!("{machineID}-fault-msg"));
             let mut faultMessage = String::from("");
@@ -399,43 +407,12 @@ fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMa
                 faultMessage));
             nodeIDs.insert(format!("{machineID}-fault-msg"), faultMsgNodeID);
 
-            let producedCountVarName = "produced-count";
-            let producedCountNodeID = NodeId::new(ns, format!("{machineID}-produced-count"));
-            variables.push(
-                Variable::new(&producedCountNodeID, 
-                producedCountVarName,
-                producedCountVarName,
-                machines[i].producedCount as u64));
-            nodeIDs.insert(format!("{machineID}-produced-count"), producedCountNodeID);
-
-            let inputInventoryVarName = "input-inventory";
-            let inputInventoryNodeID = NodeId::new(ns, format!("{machineID}-input-inventory"));
-            variables.push(
-                Variable::new(&inputInventoryNodeID, 
-                inputInventoryVarName,
-                inputInventoryVarName,
-                machines[i].inputInventory as u64));
-            nodeIDs.insert(format!("{machineID}-input-inventory"), inputInventoryNodeID);
-
-            let outputInventoryVarName = "output-inventory";
-            let outputInventoryNodeID = NodeId::new(ns, format!("{machineID}-output-inventory"));
-            variables.push(
-                Variable::new(&outputInventoryNodeID, 
-                outputInventoryVarName,
-                outputInventoryVarName,
-                machines[i].outputInventory as u64));
-            nodeIDs.insert(format!("{machineID}-output-inventory"), outputInventoryNodeID);
-
+            add_server_variable!("produced-count", producedCount, u64);
+            add_server_variable!("input-inventory", inputInventory, u64);
+            add_server_variable!("output-inventory", outputInventory, u64);
             if machines[i].sensor == true
             {
-                let sensorVarName = "sensor";
-                let sensorNodeID = NodeId::new(ns, format!("{machineID}-sensor"));
-                variables.push(
-                    Variable::new(&sensorNodeID, 
-                    sensorVarName,
-                    sensorVarName,
-                    machines[i].baseline as f64));
-                nodeIDs.insert(format!("{machineID}-sensor"), sensorNodeID);
+                add_server_variable!("sensor", baseline, f64)
             }
 
             let _ = addressSpace.add_variables(variables, &machineFolderID);
@@ -457,10 +434,33 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
         let mut machine = machines.get(id).expect("Machine ceased to exist.").borrow_mut();
         let machineID = machine.id.to_string();
 
+        // This checks for any machine state updates, and it is done here
+        // so that we don't have to make a second timer for state debouncing,
+        // and can instead measure the time it takes to change a state in
+        // server poll cycles
         machine.updateState();
 
         let stateNodeID = nodeIDs.get(&format!("{machineID}-state")).expect("NodeId ceased to exist.");
         addressSpace.set_variable_value(stateNodeID, machine.state.to_string(), &now, &now);
+
+
+        // Macro to update a variable on the server, used in the form of:
+        // update_server_variable!(variable_name, machine_field, type), 
+        // eg. cost_amount, cost (for machine.cost), u64 (to cast the value to u64)
+        //
+        // This is done as a macro because it's impossible to vary the field of a 
+        // struct you add in a function, and this is also the "default case", some
+        // server variables deviate from this and are done manually.
+        macro_rules! update_server_variable
+        {
+            ($var_name:expr, $($machine_field:ident).+, $type:ty) => {
+                {
+                    let nodeName = $var_name;
+                    let nodeID = nodeIDs.get(&format!("{machineID}-{nodeName}")).expect("NodeId ceased to exist.");
+                    addressSpace.set_variable_value(nodeID, machine.$($machine_field).+ as $type, &now, &now);
+                }
+            }
+        }
 
         let faultMsgNodeID = nodeIDs.get(&format!("{machineID}-fault-msg")).expect("NodeId ceased to exist.");
         let mut faultMessage = String::from("");
@@ -470,19 +470,15 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
         }
         addressSpace.set_variable_value(faultMsgNodeID, faultMessage, &now, &now);
 
-        let producedCountNodeID = nodeIDs.get(&format!("{machineID}-produced-count")).expect("NodeId ceased to exist.");
-        addressSpace.set_variable_value(producedCountNodeID, machine.producedCount as u64, &now, &now);
+        update_server_variable!("produced-count", producedCount, u64);
 
-        let inputInventoryNodeID = nodeIDs.get(&format!("{machineID}-input-inventory")).expect("NodeId ceased to exist.");
-        addressSpace.set_variable_value(inputInventoryNodeID, machine.inputInventory as u64, &now, &now);
+        update_server_variable!("input-inventory", inputInventory, u64);
 
-        let outputInventoryNodeID = nodeIDs.get(&format!("{machineID}-output-inventory")).expect("NodeId ceased to exist.");
-        addressSpace.set_variable_value(outputInventoryNodeID, machine.outputInventory as u64, &now, &now);
+        update_server_variable!("output-inventory", outputInventory, u64);
 
         if machine.sensor == true 
         {
-            //currently iterates too much but putting it in this loop was the only way I could find to make it work alongside 
-            //the baseline, variance, and sensor variables of machines
+            // Currently not stored in machine, should probably change later
             
             //println!("Machine ID: {}", machine.id);   //here for debugging
             let sensorVal = machine::Machine::sensor_Sim(machine.baseline, machine.variance);
