@@ -25,10 +25,10 @@ use in_container;
 
 use anyhow::Result;
 
+use chrono::{Datelike, Timelike, Utc};
+
 fn main() -> Result<()>
 {
-    let _log2 = log2::start();
-
     // Ensure the simulation state is set to running, and initialize the web server for the control panel
     simStateManager(true, Some(SimulationState::STOP));    
     thread::spawn(|| {
@@ -65,6 +65,15 @@ fn main() -> Result<()>
 // Used to be main, this is the simulation logic that runs until the web server signals it to stop
 fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Result<()>
 {
+    let fmtTime = Utc::now();
+    let logFileName = format!("{}-{}-{}_{}-{}-{}-log.txt", fmtTime.month(), fmtTime.day(), fmtTime.year(), 
+                                fmtTime.hour(), fmtTime.minute(), fmtTime.second());
+    let _log2 = log2::open(logFileName.as_str())
+        .size(100 * 1024 * 1024) // Maximum file size 100MB
+        .rotate(20)
+        .tee(true) // Also print to stdout, on top of the file
+        .start();
+
     // Tuple of line data structures and settings
     let factoryDataOption = factorySetup();
 
