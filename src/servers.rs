@@ -2,8 +2,6 @@ use local_ip_address::local_ip;
 
 use opcua::server::prelude::*;
 
-use log2::*;
-
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::fs::metadata;
@@ -21,7 +19,7 @@ pub fn initOPCServer() -> Server
     let ipAddress = local_ip().expect("IP could not be found.");
     let hostName = hostname().expect("Hostname could not be found.");
     let discoveryURL = format!("opc.tcp://{ipAddress}:4855/");
-    info!("Discovery URL: {}", discoveryURL);
+    println!("Discovery URL: {}", discoveryURL);
 
     let server = ServerBuilder::new()
         .application_name("OPC UA Simulation Server")
@@ -59,10 +57,14 @@ pub enum SimulationState
     EXIT,    // Fully exit the program
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Start of the cursed lands //////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 // This is our solution to getting signals from our Actix HTTP server out into the simulator.
 // We could not get an object or other easy to move flag inside the service that the web page uses,
 // so we use static memory to keep track of a "master state" for the simulation, which is 
-// either get or set depending on function arguments.
+// either get or set depending on function arguments. The same is true for every funciton in this
+// section, these are all middlemen between the server and the simulation for various values.
 // 
 // false and None for getter, true and Some(SimulationState::StateHere) for setter 
 pub fn simStateManager(updateState: bool, newState: Option<SimulationState>) -> SimulationState
@@ -138,6 +140,10 @@ pub fn simTimerManager(updateTimer: bool, newTimer: Option<i128>) -> i128
 
     return TIME_LIMIT.read().ok().unwrap().clone()
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// End of the cursed lands ////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Get HTML for web page
 #[get("/")]
@@ -322,7 +328,7 @@ async fn setSimTimer(info: web::Query<TimerQuery>) -> impl Responder
 pub async fn initWebServer() -> std::io::Result<()>
 {
     let port = 8080;
-    info!("Control Panel URL: http://{}:{}/", local_ip().expect("IP could not be found."), port);
+    println!("Control Panel URL: http://{}:{}/", local_ip().expect("IP could not be found."), port);
     HttpServer::new(|| {
         App::new()
             .service(getPage)

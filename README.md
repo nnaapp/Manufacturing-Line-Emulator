@@ -8,26 +8,25 @@ OpenSSL may require the pkg-config package on Linux
 Docker handles all local dependencies (Rust, OpenSSL)
 
 # Building and Running
-To build only, `cargo build --bin simulator --features build-simulator`\
-and/or `cargo build --bin wrapper --features build-wrapper`.
+To build only, `cargo build`.\
+To run or build and run, `cargo run`.
 
-To run or build and run, `cargo run --bin simulator --features build-simulator`\
-and/or `cargo build --bin wrapper --features build-wrapper`
+In the console, it will print the address of the OPC server, as well as the address of the web app control panel. Open the control
+panel to control the simulator.
 
-<b>Currently the location of the JSON config is hard-coded as /home/data/factory.json,
-this will be overhauled soon, but this means it can only be run through docker at the moment,
-and the config must be project_directory/data/factory.json!</b>
-
-Simulator is just the simulator command line program.
-
-Wrapper is a WIP GUI wrapper that will let you start/stop the simulator, and specify config file location.
+<b>The simulator looks in the project_root/data/ directory for config files, passed by name from the web app control panel.
+This is done because the docker container needs to mount a directory to avoid rebuilding every time you change a config file.
+If you really want this to change, the two places of interest are servers.rs in the toggleSim POST, as well as main.rs in the
+factorySetup function. Otherwise, put configs in that directory and follow the instructions in this README.</b>
 
 # Running with Docker
-Run `docker build -t <name> .` in the root directory,
+Run `docker build -t container_name .` in the root directory,
 and run with your preferred variant of `docker run --net=host --mount type=bind,source="$(pwd)"/data,target=/home/data -it container_name`.
 
-The discovery address of the server will be printed to console, but the IP
-will be the same as the host machine, as it runs on the host network.
+`--net=host` makes the container use the same network as the host machine, which makes it much easier to connect to the OPC server/control panel.
+
+`--mount type=bind,source="$(pwd)"/data,target=/home/data` mounts ./data to /home/data, which is how the container can on-the-fly see and use 
+new config files. Change these two directories if you need to, but you will need to recompile after changing the file reads in code, as stated above.
 
 # JSON Configuration Guide
 An example JSON is included (factory.json), but the following is a key of what each field means, organized by scope.
@@ -38,7 +37,6 @@ An example JSON is included (factory.json), but the following is a key of what e
 - **description**: Description of the line/factory
 - **simSpeed**: Multiplier for how fast the simulation should run
 - **pollRate**: Rate at which the server polls machines in ms
-- **Runtime**: Amount of time the simulation will run for, in seconds
 
 ## Machines
 
@@ -76,7 +74,13 @@ Conveyors is an array, each element has the following:
 - **inputID**: Used for connectinb a belt to another belt, null for none, or conveyor belt ID to connect a belt
 
 # Connecting 
-The Discovery URL will be in the command line when the simulator is run. Copy this URL and use it to connect to the client software of choice. 
+The OPC UA Discovery URL will be in the console when the simulator is run. Copy this URL and use it to connect to the client software of choice. 
+
+The control panel link will also be displayed in the console, just open it in your browser of choice.
+
+If you cannot see the console for some reason, they will be similar to the following:\
+opc.tcp://your_ip:4855/ \
+http://your_ip:8080/
 
 # Contributors
 - nnaapp (Connor Burnett)
