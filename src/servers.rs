@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use std::sync::RwLock;
 use std::fs::metadata;
 
-use actix_web::{get, post, App, HttpResponse, HttpServer, Responder, web, Result as ActixResult};
+use actix_web::{get, post, App, HttpResponse, HttpRequest, HttpServer, Responder, web, Result as ActixResult};
+use actix_files::NamedFile;
 
 use serde::{Serialize, Deserialize};
 
@@ -323,6 +324,11 @@ async fn setSimTimer(info: web::Query<TimerQuery>) -> impl Responder
     HttpResponse::Ok()
 }
 
+async fn getLogo(_req: HttpRequest) -> ActixResult<NamedFile>
+{
+    Ok(NamedFile::open("./data/static/eosys.png")?)
+}
+
 // Set up and asynchronously run the Actix HTTP server for the control panel
 #[actix_web::main]
 pub async fn initWebServer() -> std::io::Result<()>
@@ -331,6 +337,7 @@ pub async fn initWebServer() -> std::io::Result<()>
     println!("Control Panel URL: http://{}:{}/", local_ip().expect("IP could not be found."), port);
     HttpServer::new(|| {
         App::new()
+            .route("/eosys.png", web::get().to(getLogo))
             .service(getPage)
             .service(toggleSim)
             .service(exitSim)
