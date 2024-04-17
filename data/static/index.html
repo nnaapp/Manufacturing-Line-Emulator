@@ -8,79 +8,67 @@
 </head>
 
 <body class="col-12 vh-100">
-  <div class="d-flex justify-content-center pt-4">
-    <img src="/eosys.png" class="img-fluid " alt="EOSYS logo">
+    <div class="d-flex justify-content-center pt-4">
+        <img src="/eosys.png" class="img-fluid " alt="EOSYS logo">
     </div>
     <div class="d-flex justify-content-center align-items-center">
-    <div id="StartPage" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2 px-0 mx-0">
-        <div class="card-header d-flex text-center text-primary">
-          <div class="d-flex col-1 justify-content-center align-items-center">
-          <button class="btn btn-md col-12 btn-danger text-center" type="button" id="btnExit" data-status="exit">Exit</button>
-          </div>
-          <div class="d-flex justify-content-center flex-fill">
-          <h2>Simulator Home Page</h2>
-          </div>
-          <div class="d-flex col-1">
-          </div>
-        </div>
-        <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center">
-          <h5 class="card-title text-primary mb-3">Please enter the name of your config file and or set a runtime</h5>
-          <form class="d-flex flex-row justify-content-evenly col-10">
-            <div class=" text-primary">
-              <label for="txtFileName" class ='form-label mt-3' >Enter name of config file (in program_path/data): </label>
-              <input id="txtFileName" class="col-12 form-control text-secondary text-center border border-primary" style="text-align: center;" placeholder="Filename">
-             </div> 
-             <div class="text-primary">
-              <label for="timeLim" class ='form-label mt-3' >Enter optional runtime in minutes, blank for continous:</label>
-              <input type="number" class="col-12 form-control text-secondary text-center border border-primary" id="timeLim" placeholder="80"> 
-            </div>  
-          </form>
-   
-
-          <button class="col-10 btn btn-lg btn-primary text-center mt-3" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
-          <!-- <h3>Click to exit the Simulator</h3> -->
-          
-        </div>
+        <div id="StartPage" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2 px-0 mx-0">
+            <div class="card-header d-flex text-center text-primary">
+                <div class="d-flex col-1 justify-content-center align-items-center">
+                    <button class="btn btn-md col-12 btn-danger text-center" type="button" id="btnExit" data-status="exit">Exit</button>
+                </div>
+                <div class="d-flex justify-content-center flex-fill">
+                    <h2>Simulator Home Page</h2>
+                </div>
+                <div class="d-flex col-1"></div>
+            </div>
+            <div class="card-body col-12 d-flex flex-column justify-content-center align-items-center">
+                <h5 class="card-title text-primary mb-3">Please enter the name of your config file and or set a runtime</h5>
+                <form class="d-flex flex-row justify-content-evenly col-10">
+                    <div class=" text-primary">
+                        <label for="txtFileName" class ='form-label mt-3' >Enter name of config file (in program_path/data): </label>
+                        <input id="txtFileName" class="col-12 form-control text-secondary text-center border border-primary" style="text-align: center;" placeholder="Filename">
+                    </div> 
+                    <div class="text-primary">
+                        <label for="timeLim" class ='form-label mt-3' >Enter optional runtime in minutes, blank for continous:</label>
+                        <input type="number" class="col-12 form-control text-secondary text-center border border-primary" id="timeLim" placeholder="80"> 
+                    </div>  
+                </form>
+                <button class="col-10 btn btn-lg btn-primary text-center mt-3" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
+            </div>
         </div> 
-      </div>
-  </div>    
+    </div>
 
-  <div class="d-flex justify-content-center align-items-center">
-    <div id="ControlPanel" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2" style="display: none">
-      <div class="card-header d-flex text-center text-primary">
-        <div class="d-flex col-1 justify-content-center align-items-center">
-          <button class="btn btn-md btn-danger col-12 text-center" type="button" id="btnBack" data-status="Back"> Back </button>
+    <div class="d-flex justify-content-center align-items-center">
+        <div id="ControlPanel" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2" style="display: none">
+            <div class="card-header d-flex text-center text-primary">
+                <div class="d-flex col-1 justify-content-center align-items-center">
+                    <button class="btn btn-md btn-danger col-12 text-center" type="button" id="btnBack" data-status="Back"> Back </button>
+                </div>
+                <div class="d-flex justify-content-center flex-fill">
+                    <h2 class="mt-2">Simulator Control Panel</h2>
+                </div>
+                <div class="d-flex col-1"></div>
+            </div>  
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                <div class="d-flex flex-row text-primary col-12 align-items-center justify-content-center">
+                    <div class="d-flex flex-column h-25 col-4 mx-2 align-items-center justify-content-center bg-light border border-primary border-1">
+                        <h4 class="mt-2">Time Unpaused:</h4>
+                        <p id="txtTimeUnpaused">00:00:00</p>
+                    </div>
+                    <div class="d-flex flex-column h-25 col-4 mx-2 align-items-center justify-content-center bg-light border border-primary border-1">
+                        <h4 class="mt-2">Time Total:</h4>
+                        <p id="txtTimeTotal">00:00:00</p>
+                    </div>
+                </div>
+                <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
+                    <button class="btn btn-lg btn-primary text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
+                    <button class="btn btn-lg btn-dark text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
+                </div>
+                <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
+            </div>   
         </div>
-        <div class="d-flex justify-content-center flex-fill">
-          <h2 class="mt-2">Simulator Control Panel</h2>
-        </div>
-        <div class="d-flex col-1">
-        </div>
-      </div>  
-        <div class="card-body d-flex flex-column justify-content-center align-items-center">
-          <!--<div class="col-12 ">
-            <h4>Progress:</h4>
-            <div class="progress mt-5">
-              <div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 25%;" aria-valuenow='#txtTime' aria-valuemin="0" aria-valuemax=timeLim></div>
-            </div>
-            !-->
-          <div class="d-flex flex-row text-primary col-12 align-items-center justify-content-center">
-            <div class="d-flex flex-column h-25 col-4 mx-2 align-items-center justify-content-center bg-light border border-primary border-1">
-              <h4 class="mt-2">Time Unpaused:</h4>
-              <p id="txtTimeUnpaused">00:00:00</p>
-            </div>
-            <div class="d-flex flex-column h-25 col-4 mx-2 align-items-center justify-content-center bg-light border border-primary border-1">
-              <h4 class="mt-2">Time Total:</h4>
-              <p id="txtTimeTotal">00:00:00</p>
-            </div>
-          </div>
-        <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
-          <button class="btn btn-lg btn-primary text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
-          <button class="btn btn-lg btn-dark text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
-        </div>
-        <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
-    </div>   
-  </div>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
@@ -93,215 +81,214 @@
 <script>
 $(document).ready(function(){
 
-  var timeTracker = window.setInterval(function() {
-    $.ajax({
-      type: 'GET',
-      url: 'http://' + location.host + '/getTime',
-      error: function(e) {
-        console.log(e);
-      },
-      success: function(result) {
-        console.log(result);
-
-        let activeSeconds = result.activeTime / 1000000;
-        const activeDate = new Date(null)
-        activeDate.setSeconds(activeSeconds)
-        const timeActiveFormatted = activeDate.toISOString().substring(11,19)
-        $('#txtTimeUnpaused').text(timeActiveFormatted);
-
-        let totalSeconds = result.runningTime / 1000000;
-        const totalDate = new Date(null)
-        totalDate.setSeconds(totalSeconds);
-        const timeTotalFormatted = totalDate.toISOString().substring(11, 19);
-        $('#txtTimeTotal').text(timeTotalFormatted);
-      }
-    });
-  }, 1000)
-
-  $.ajax({
-    type: 'GET',
-    url: 'http://' + location.host + '/simState',
-    error: function(error) {
-      console.log(error);
-    },
-    success: function(success) {
-      console.log(success);
-      if (success.state == "running" || success.state == "paused") {
-        $('#StartPage').hide();
-        $('#ControlPanel').show();
-        if (success.state == "running") {
-          $('#btnPause').prop('disabled', false)
-          $('#btnResume').prop('disabled', true)
-        }
-        else {
-          $('#btnPause').prop('disabled', true)
-          $('#btnResume').prop('disabled', false)
-
-        }
-      }
-    }
-  })
-
-  // disables the pause button until the start button has been clicked
-  $('#btnPause').prop('disabled', true);
-  let running = false
-  // event to change start button to stop and vice versa
-  $('#btnStart').on('click',function(){
-    let strStatus = $(this).attr('data-status');
-    if(strStatus == 'start'){
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/setConfig?config=' + encodeURIComponent($('#txtFileName').val()),
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          let timeLim = $('#timeLim').val()
-          if (timeLim == '' || timeLim == undefined){
-            timeLim = 0
-          }
-
-          $.ajax({
-            type: 'POST',
-            url:'http://' + location.host + '/setTimer?timer=' + encodeURIComponent(timeLim),
-            error: function(error){
-              console.log(error)
+    var timeTracker = window.setInterval(function() {
+        $.ajax({
+            type: 'GET',
+            url: 'http://' + location.host + '/getTime',
+            error: function(e) {
+            console.log(e);
             },
-            success: function(){
-              $.ajax({
+            success: function(result) {
+                console.log(result);
+
+                let activeSeconds = result.activeTime / 1000000;
+                const activeDate = new Date(null)
+                activeDate.setSeconds(activeSeconds)
+                const timeActiveFormatted = activeDate.toISOString().substring(11,19)
+                $('#txtTimeUnpaused').text(timeActiveFormatted);
+
+                let totalSeconds = result.runningTime / 1000000;
+                const totalDate = new Date(null)
+                totalDate.setSeconds(totalSeconds);
+                const timeTotalFormatted = totalDate.toISOString().substring(11, 19);
+                $('#txtTimeTotal').text(timeTotalFormatted);
+            }
+        });
+    }, 1000)
+
+    $.ajax({
+        type: 'GET',
+        url: 'http://' + location.host + '/simState',
+        error: function(error) {
+            console.log(error);
+        },
+        success: function(success) {
+            console.log(success);
+            if (success.state == "running" || success.state == "paused") {
+                $('#StartPage').hide();
+                $('#ControlPanel').show();
+                if (success.state == "running") {
+                    $('#btnPause').prop('disabled', false)
+                    $('#btnResume').prop('disabled', true)
+                }
+                else {
+                    $('#btnPause').prop('disabled', true)
+                    $('#btnResume').prop('disabled', false)
+                }
+            }
+        }
+    })
+
+    // disables the pause button until the start button has been clicked
+    $('#btnPause').prop('disabled', true);
+    let running = false
+    // event to change start button to stop and vice versa
+    $('#btnStart').on('click',function(){
+        let strStatus = $(this).attr('data-status');
+        if(strStatus == 'start'){
+            $.ajax({
+                type: 'POST',
+                url: 'http://' + location.host + '/setConfig?config=' + encodeURIComponent($('#txtFileName').val()),
+                error: function(error){
+                    console.log(error)
+                },
+                success: function(success){
+                    let timeLim = $('#timeLim').val()
+                    if (timeLim == '' || timeLim == undefined){
+                        timeLim = 0
+                    }
+
+                    $.ajax({
+                        type: 'POST',
+                        url:'http://' + location.host + '/setTimer?timer=' + encodeURIComponent(timeLim),
+                        error: function(error){
+                            console.log(error)
+                        },
+                        success: function(){
+                            $.ajax({
+                                type: 'POST',
+                                url: 'http://' + location.host + '/toggleSim',
+                                error: function(error){
+                                    console.log(error)
+                                },
+                                success: function(success){
+                                    if (success.message != 'success') {
+                                        console.log(success.message);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            text: success.message,
+                                            title: 'Something went wrong!'
+                                        })
+                                        return;
+                                    }
+                                    running = true
+                                    $('#StartPage').slideToggle(function(){
+                                        $('#ControlPanel').slideToggle();
+                                    })
+                                    $('#btnPause').prop('disabled', false)
+                                    $('#btnResume').prop('disabled', true)
+                                }
+                            })
+                        }
+                    }) 
+                }
+            })
+        }      
+    });
+
+    //event for back button
+    $('#btnBack').on('click', function(){
+        if (running == true){ 
+            $.ajax({
                 type: 'POST',
                 url: 'http://' + location.host + '/toggleSim',
                 error: function(error){
-                  console.log(error)
+                    console.log(error)
                 },
                 success: function(success){
-                  if (success.message != 'success') {
-                    console.log(success.message);
-                    Swal.fire({
-                      icon: 'error',
-                      text: success.message,
-                      title: 'Something went wrong!'
+                    console.log(success)
+                    running = false
+                    $('#ControlPanel').slideToggle(function(){
+                        $('#StartPage').slideToggle();
                     })
-                    return;
-                  }
-                  running = true
-                  $('#StartPage').slideToggle(function(){
-                    $('#ControlPanel').slideToggle();
-                  })
-                  $('#btnPause').prop('disabled', false)
-                  $('#btnResume').prop('disabled', true)
-                }
-              })
+                },
+            })
+        }
+        else{
+            $('#ControlPanel').slideToggle(function(){
+                $('#StartPage').slideToggle();
+            })
+        }
+    })
+
+    // event to for pause button click
+    $('#btnPause').on('click',function(){
+        $.ajax({
+            type: 'POST',
+            url: 'http://' + location.host + '/suspendSim',
+            error: function(error){
+                console.log(error)
+            },
+            success: function(success){
+                console.log(success)
+                $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
+                $('#btnResume').removeClass('btn-dark').addClass('btn-primary')
+                $('#btnPause').prop('disabled', true)
+                $('#btnResume').prop('disabled', false)
             }
-            
-          })
-          
-        }
-      })
-    }      
-  });
-
-  //event for back button
-  $('#btnBack').on('click', function(){
-    if (running == true){ 
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/toggleSim',
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          console.log(success)
-          running = false
-          $('#ControlPanel').slideToggle(function(){
-            $('#StartPage').slideToggle();
-          })
-        },
-      })
-    }
-    else{
-      $('#ControlPanel').slideToggle(function(){
-        $('#StartPage').slideToggle();
-      })
-    }
-  })
-
-  // event to for pause button click
-  $('#btnPause').on('click',function(){
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/suspendSim',
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          console.log(success)
-          $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
-          $('#btnResume').removeClass('btn-dark').addClass('btn-primary')
-          $('#btnPause').prop('disabled', true)
-          $('#btnResume').prop('disabled', false)
-        }
-      })
+        })
     });
 
-  //event for resume button click
-  $('#btnResume').on('click',function(){
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/suspendSim',
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          console.log(success)
-          $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
-          $('#btnPause').removeClass('btn-dark').addClass('btn-primary')
-          $('#btnPause').prop('disabled', false)
-          $('#btnResume').prop('disabled', true)
+    //event for resume button click
+    $('#btnResume').on('click',function(){
+        $.ajax({
+            type: 'POST',
+            url: 'http://' + location.host + '/suspendSim',
+            error: function(error){
+                console.log(error)
+            },
+            success: function(success){
+                console.log(success)
+                $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
+                $('#btnPause').removeClass('btn-dark').addClass('btn-primary')
+                $('#btnPause').prop('disabled', false)
+                $('#btnResume').prop('disabled', true)
+            }
+        })
+    });
+    
+    //event for close button click
+    $('#btnClose').on('click',function(){
+        let strStatus = $(this).attr('data-status');
+        if(strStatus == 'Close'){
+            $.ajax({
+                type: 'POST',
+                url: 'http://' + location.host + '/toggleSim',
+                error: function(error){
+                    console.log(error)
+                },
+                success: function(success){
+                    console.log(success)
+                    running = false
+                    $('#btnPause').prop('disabled', true)
+                    $('#btnResume').prop('disabled', true)
+                }
+            })
         }
-      })
-  });
-  //event for close button click
-  $('#btnClose').on('click',function(){
-    let strStatus = $(this).attr('data-status');
-    if(strStatus == 'Close'){
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/toggleSim',
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          console.log(success)
-          running = false
-          $('#btnPause').prop('disabled', true)
-          $('#btnResume').prop('disabled', true)
-        }
-      })
-    }
-  });
+    });
 
-  //for exiting entire program
-  $('#btnExit').on('click',function(){
-    let strStatus = $(this).attr('data-status');
-    if(strStatus == 'exit'){
-      $.ajax({
-        type: 'POST',
-        url: 'http://' + location.host + '/exitSim',
-        error: function(error){
-          console.log(error)
-        },
-        success: function(success){
-          console.log(success)
-          running = false;
-          $('#divControlPanel').slideToggle(function(){
-            $('#divStartPage').slideToggle();
-          })
-          $('#btnPause').prop('disabled', true)
-          $('#btnResume').prop('disabled', true)
+    //for exiting entire program
+    $('#btnExit').on('click',function(){
+        let strStatus = $(this).attr('data-status');
+        if(strStatus == 'exit'){
+            $.ajax({
+                type: 'POST',
+                url: 'http://' + location.host + '/exitSim',
+                error: function(error){
+                    console.log(error)
+                },
+                success: function(success){
+                    console.log(success)
+                    running = false;
+                    $('#divControlPanel').slideToggle(function(){
+                        $('#divStartPage').slideToggle();
+                    })
+                    $('#btnPause').prop('disabled', true)
+                    $('#btnResume').prop('disabled', true)
+                }
+            })
         }
-      })
-    }
-  });
+    });
+    
 });
 </script>
