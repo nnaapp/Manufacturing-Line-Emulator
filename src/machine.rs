@@ -5,8 +5,6 @@ use std::cell::RefMut;
 
 use rand::Rng;
 
-use log2::*;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OPCState
 {
@@ -294,7 +292,7 @@ impl Machine
                 //     inputClock
                 if self.inputBehavior.is_none()
                 {
-                    error!("ID {}: Input behavior is not defined.", self.id);
+                    tracing::error!("ID {}: Input behavior is not defined.", self.id);
                     return;
                 }
                 let inputBehavior = self.inputBehavior.unwrap();
@@ -311,7 +309,7 @@ impl Machine
                 //     processingClock
                 if self.processingBehavior.is_none()
                 {
-                    error!("ID {}: Processing behavior is not defined.", self.id);
+                    tracing::error!("ID {}: Processing behavior is not defined.", self.id);
                     return;
                 }
                 let processingBehavior = self.processingBehavior.unwrap();
@@ -334,7 +332,7 @@ impl Machine
             //     outputClock
             if self.outputBehavior.is_none()
             {
-                error!("ID {}: Output behavior is not defined.", self.id);
+                tracing::error!("ID {}: Output behavior is not defined.", self.id);
                 return;
             }
             let outputBehavior = self.outputBehavior.unwrap();
@@ -355,7 +353,7 @@ impl Machine
         self.currentFault = None;
         self.faultTimeCurrentUs = 0;
         self.faultClockUs = 0;
-        info!("ID {} : Has been fixed: Producing Again.", self.id);
+        tracing::info!("ID {} : Has been fixed: Producing Again.", self.id);
     }
 
     fn checkIfShouldFault(&mut self) -> bool
@@ -367,7 +365,7 @@ impl Machine
             {
                 self.currentFault = Some(fault.clone());
                 // Debug logging to show a message when the machine faults
-                debug!("ID {}: {}", self.id, fault.faultMessage); // TODO: more than one fault type
+                tracing::debug!("ID {}: {}", self.id, fault.faultMessage); // TODO: more than one fault type
                 self.state = OPCState::FAULTED;
                 self.stateChangeCount += 1;
                 self.processingInProgress = false;
@@ -406,14 +404,14 @@ impl Machine
                     self.state = OPCState::STARVED;
                     self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Starved.", self.id);
+                    tracing::info!("ID {}: Starved.", self.id);
                 }
                 else if self.state == OPCState::BLOCKED && self.inputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVEDBLOCKED;
                     self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Starved and Blocked", self.id);
+                    tracing::info!("ID {}: Starved and Blocked", self.id);
                 }
                 else if self.state == OPCState::PRODUCING || self.state == OPCState::BLOCKED
                 {
@@ -428,7 +426,7 @@ impl Machine
                     self.state = OPCState::BLOCKED;
                     self.inputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Blocked", self.id);
+                    tracing::info!("ID {}: Blocked", self.id);
                 }
 
                 self.inputDebouncer += 1;
@@ -449,14 +447,14 @@ impl Machine
                     self.state = OPCState::BLOCKED;
                     self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Blocked.", self.id);
+                    tracing::info!("ID {}: Blocked.", self.id);
                 }
                 else if self.state == OPCState::STARVED && self.outputDebouncer >= self.debounceRate
                 {
                     self.state = OPCState::STARVEDBLOCKED;
                     self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Starved and Blocked", self.id);
+                    tracing::info!("ID {}: Starved and Blocked", self.id);
                 }
                 else if self.state == OPCState::PRODUCING || self.state == OPCState::STARVED
                 {
@@ -471,7 +469,7 @@ impl Machine
                     self.state = OPCState::STARVED;
                     self.outputDebouncer = 0;
                     self.stateChangeCount += 1;
-                    info!("ID {}: Starved.", self.id);
+                    tracing::info!("ID {}: Starved.", self.id);
                 }
 
                self.outputDebouncer += 1;
@@ -496,7 +494,7 @@ impl Machine
             self.state = OPCState::PRODUCING;
             self.processingDebouncer = 0;
             self.stateChangeCount += 1;
-            info!("ID {}: Producing.", self.id);
+            tracing::info!("ID {}: Producing.", self.id);
             return;
         }
         else if self.state != OPCState::PRODUCING
@@ -668,7 +666,7 @@ impl Machine
         self.outputInventory += self.throughput;
         self.producedCount += self.throughput;
 
-        info!("ID {}: Produced.", self.id);
+        tracing::info!("ID {}: Produced.", self.id);
 
         self.processingInProgress = false;
         return true;

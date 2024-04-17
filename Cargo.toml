@@ -13,7 +13,8 @@ anyhow = "1.0.81"
 actix-web = "4.5.1"
 actix-files = "0.6.5"
 local-ip-address = "0.6.0"
-log2 = "0.1.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3" }
 opcua = "0.12.0"
 rand = "0.8.5"
 serde = { version = "1.0.196", features = ["derive"] }

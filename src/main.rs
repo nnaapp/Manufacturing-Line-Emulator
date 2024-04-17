@@ -15,11 +15,16 @@ use std::collections::HashMap;
 use std::thread;
 use std::cell::{RefCell, RefMut};
 use std::sync::Arc;
+use std::fs::File;
 
 use opcua::server::prelude::*;
 use opcua::sync::RwLock as opcuaRwLock;
 
-use log2::*;
+use tracing_subscriber::{
+    fmt::{self},
+    prelude::*,
+    filter::LevelFilter,
+};
 
 use in_container;
 
@@ -65,14 +70,47 @@ fn main() -> Result<()>
 // Used to be main, this is the simulation logic that runs until the web server signals it to stop
 fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Result<()>
 {
+    // let filter = tracing_subscriber::filter::EnvFilter::builder()
+    //     .with_default_directive(tracing_subscriber::filter::LevelFilter::DEBUG.into())
+    //     .from_env()?
+    //     .add_directive("hyper::proto=info".parse()?);
+
+    let stdoutLogger = fmt::layer()
+        .pretty()
+        .with_line_number(false)
+        .with_file(false)
+        .with_filter(LevelFilter::DEBUG);
+
     let fmtTime = Utc::now();
     let logFileName = format!("{}-{}-{}_{}-{}-{}-log.txt", fmtTime.month(), fmtTime.day(), fmtTime.year(), 
-                                fmtTime.hour(), fmtTime.minute(), fmtTime.second());
-    let _log2 = log2::open(logFileName.as_str())
-        .size(100 * 1024 * 1024) // Maximum file size 100MB
-        .rotate(20)
-        .tee(true) // Also print to stdout, on top of the file
-        .start();
+                        fmtTime.hour(), fmtTime.minute(), fmtTime.second());
+    let logFilePath: String;
+    if in_container::in_container()
+    {
+        logFilePath = format!("/home/data/{}", logFileName);
+    }
+    else
+    {
+        logFilePath = format!("./data/{}", logFileName);
+    }
+    let logFile = File::create(logFilePath);
+    let logFile = match logFile 
+    {
+        Ok(file) => file, 
+        Err(error) => panic!("Error: {:?}", error),
+    };
+    let fileLogger = fmt::layer()
+        .with_ansi(false)
+        .with_line_number(false)
+        .with_file(false)
+        .with_writer(Arc::new(logFile))
+        .with_filter(LevelFilter::DEBUG);
+
+    
+    let _subscriber = tracing_subscriber::registry()
+        .with(stdoutLogger)
+        .with(fileLogger)
+        .try_init();
 
     // Tuple of line data structures and settings
     let factoryDataOption = factorySetup();
@@ -156,7 +194,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
             executionTimer += deltaTime;
             if executionTimer >= timerLimit
             {
-                debug!("Execution time exceeded, ending simulation.");
+                tracing::debug!("Execution time exceeded, ending simulation.");
                 simStateManager(true, Some(SimulationState::STOP));
                 break;
             }
@@ -216,7 +254,7 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     for id in machineIDs
     {
         let machine = machines.get(&id).expect("Machine ceased to exist.").borrow();
-        info!("\nMachine: {}\nConsumed: {}\nProduced: {}\nState Changes: {}\nFaults: {}", 
+        tracing::info!("\nMachine: {}\nConsumed: {}\nProduced: {}\nState Changes: {}\nFaults: {}", 
                 machine.id, machine.consumedCount, machine.producedCount, machine.stateChangeCount, machine.faultedCount);
     }
     
@@ -240,10 +278,10 @@ fn factorySetup() -> Option<(HashMap<String, RefCell<Machine>>, Vec<String>,
     let data: JSONData = serde_json::from_str(&json_data).expect("Failed to parse JSON");
 
 
-    info!("Factory Name: {}", data.factory.name);
-    info!("Description: {}", data.factory.description);
-    info!("Simulation Speed: {} ", data.factory.simSpeed);
-    info!("Poll Rate: {} milliseconds", data.factory.pollRateMs);
+    tracing::info!("Factory Name: {}", data.factory.name);
+    tracing::info!("Description: {}", data.factory.description);
+    tracing::info!("Simulation Speed: {} ", data.factory.simSpeed);
+    tracing::info!("Poll Rate: {} milliseconds", data.factory.pollRateMs);
 
     //Setting data to variables to be passed into the return
     let factorySpeed = data.factory.simSpeed; 
