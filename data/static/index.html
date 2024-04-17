@@ -276,6 +276,10 @@ $(document).ready(function(){
                 success: function(success){
                     console.log(success)
                     running = false
+                    Swal.fire({
+                        icon: "info",
+                        text: "Simulation successfully shut down."
+                    })
                     $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
                     $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
                     $('#btnPause').prop('disabled', true)
@@ -298,10 +302,9 @@ $(document).ready(function(){
                 success: function(success){
                     console.log(success)
                     running = false;
-                    $('#divControlBody').slideToggle(function() {
-                        $('#ControlPanel').slideToggle(function(){
-                            $('#StartPage').slideToggle();
-                        })
+                    Swal.fire({
+                        icon: "info",
+                        text: "Exit successful, this page will stop working as well."
                     })
                     $('#btnPause').prop('disabled', true)
                     $('#btnResume').prop('disabled', true)
