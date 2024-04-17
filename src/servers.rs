@@ -151,7 +151,7 @@ async fn getPage() -> impl Responder
 {
     HttpResponse::Ok()
         .content_type("text/html")
-        .body(include_str!("../data/index.html"))
+        .body(include_str!("../data/static/index.html"))
 }
 
 #[derive(Serialize)]
