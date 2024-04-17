@@ -201,6 +201,7 @@ pub struct Machine
     pub producedCount: usize,
     pub consumedCount: usize,
     pub stateChangeCount: usize,
+    pub faultedCount: usize,
 
     pub sensor: bool,
     pub baseline: f64,
@@ -275,8 +276,7 @@ impl Machine
             consumedCount: 0,
             producedCount: 0,
             stateChangeCount: 0,
-
-            
+            faultedCount: 0,
         };
 
         return newMachine;
@@ -377,6 +377,7 @@ impl Machine
                 let midTimePercent = timeSeed as f32 / 100.0; //turn seed into percentage
                 self.faultTimeCurrentUs = ((fault.faultTimeHighSec - fault.faultTimeLowSec) * midTimePercent + fault.faultTimeLowSec) as u128 * 1000 * 1000; //sets fault time to the a percent of the way between the low and high values.
                 self.faultClockUs = 0;
+                self.faultedCount += 1;
                 return true;
             }
         }

@@ -417,6 +417,9 @@ fn serverSetup(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>, machinesHashMa
             nodeIDs.insert(format!("{machineID}-fault-msg"), faultMsgNodeID);
 
             add_server_variable!("produced-count", producedCount, u64);
+            add_server_variable!("consumed-count", consumedCount, u64);
+            add_server_variable!("state-change-count", stateChangeCount, u64);
+            add_server_variable!("fault-count", faultedCount, u64);
             add_server_variable!("input-inventory", inputInventory, u64);
             add_server_variable!("output-inventory", outputInventory, u64);
             if machines[i].sensor == true
@@ -480,9 +483,10 @@ fn serverPoll(addressSpace: &mut AddressSpace, machines: &HashMap<String, RefCel
         addressSpace.set_variable_value(faultMsgNodeID, faultMessage, &now, &now);
 
         update_server_variable!("produced-count", producedCount, u64);
-
+        update_server_variable!("consumed-count", consumedCount, u64);
+        update_server_variable!("state-change-count", stateChangeCount, u64);
+        update_server_variable!("fault-count", faultedCount, u64);
         update_server_variable!("input-inventory", inputInventory, u64);
-
         update_server_variable!("output-inventory", outputInventory, u64);
 
         if machine.sensor == true 
