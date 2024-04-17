@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/pulse/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <title>Simulator Control Panel</title>
 </head>
 
@@ -15,7 +16,7 @@
         <div id="StartPage" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2 px-0 mx-0">
             <div class="card-header d-flex text-center text-primary">
                 <div class="d-flex col-1 justify-content-center align-items-center">
-                    <button class="btn btn-md col-12 btn-danger text-center" type="button" id="btnExit" data-status="exit">Exit</button>
+                    <button class="btn btn-md col-12 btn-danger text-center" type="button" id="btnExit" data-status="exit"><i class="bi bi-x-square-fill"></i> Exit</button>
                 </div>
                 <div class="d-flex justify-content-center flex-fill">
                     <h2>Simulator Home Page</h2>
@@ -43,7 +44,7 @@
         <div id="ControlPanel" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2" style="display: none">
             <div class="card-header d-flex text-center text-primary">
                 <div class="d-flex col-1 justify-content-center align-items-center">
-                    <button class="btn btn-md btn-danger col-12 text-center" type="button" id="btnBack" data-status="Back"> Back </button>
+                    <button class="btn btn-md btn-danger col-12 text-center" type="button" id="btnBack" data-status="Back"><i class="bi bi-arrow-return-left"></i> Back </button>
                 </div>
                 <div class="d-flex justify-content-center flex-fill">
                     <h2 class="mt-2">Simulator Control Panel</h2>
@@ -62,10 +63,10 @@
                     </div>
                 </div>
                 <div class="card-body col-12 d-flex flex-row justify-content-center align-items-center mt-5">
-                    <button class="btn btn-lg btn-primary text-center mx-3" type="button" id="btnPause" data-status="pause"> Pause Simulator </button>
-                    <button class="btn btn-lg btn-dark text-center mx-3" type="button" id="btnResume" data-status="start"> Resume Simulator </button>
+                    <button class="btn btn-lg btn-dark text-center mx-3" type="button" id="btnPause" data-status="pause"><i class="bi bi-pause-fill"></i> Pause Simulator </button>
+                    <button class="btn btn-lg btn-primary text-center mx-3" type="button" id="btnResume" data-status="start"><i class="bi bi-play-fill"></i> Resume Simulator </button>
                 </div>
-                <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"> Stop Current Simulation </button>   
+                <button class="btn btn-lg btn-danger text-center mx-3" type="button" id="btnClose" data-status="Close"><i class="bi bi-sign-stop-fill"></i> Stop Current Simulation </button>   
             </div>   
         </div>
     </div>
@@ -175,6 +176,8 @@ $(document).ready(function(){
                                     $('#StartPage').slideToggle(function(){
                                         $('#ControlPanel').slideToggle();
                                     })
+                                    $('#btnPause').removeClass('btn-dark').addClass('btn-primary')
+                                    $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
                                     $('#btnPause').prop('disabled', false)
                                     $('#btnResume').prop('disabled', true)
                                 }
@@ -260,6 +263,8 @@ $(document).ready(function(){
                 success: function(success){
                     console.log(success)
                     running = false
+                    $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
+                    $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
                     $('#btnPause').prop('disabled', true)
                     $('#btnResume').prop('disabled', true)
                 }
