@@ -212,6 +212,13 @@ fn simulation(addressSpace: &mut Arc<opcuaRwLock<AddressSpace>>) -> std::io::Res
     {
         addressSpace.write().delete(&nodeID, true);
     }
+
+    for id in machineIDs
+    {
+        let machine = machines.get(&id).expect("Machine ceased to exist.").borrow();
+        info!("\nMachine: {}\nConsumed: {}\nProduced: {}\nState Changes: {}\nFaults: {}", 
+                machine.id, machine.consumedCount, machine.producedCount, machine.stateChangeCount, machine.faultedCount);
+    }
     
     Ok(())
 }
