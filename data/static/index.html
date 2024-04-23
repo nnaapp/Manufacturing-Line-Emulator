@@ -13,7 +13,7 @@
         <img src="/eosys.png" class="img-fluid " alt="EOSYS logo">
     </div>
     <div class="d-flex justify-content-center align-items-center">
-        <div id="StartPage" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2 px-0 mx-0">
+        <div id="StartPage" class="card col-12 col-lg-9 mt-5 bg-light border border-primary border-2 px-0 mx-0" style="display:none;">
             <div class="card-header d-flex text-center text-primary">
                 <div class="d-flex col-1 justify-content-center align-items-center">
                     <button class="btn btn-md col-12 btn-danger text-center" type="button" id="btnExit" data-status="exit"><i class="bi bi-x-square-fill"></i> Exit</button>
@@ -53,8 +53,16 @@
             </div>  
             <div class="card-body col-12">
                 <div id="divControlBody" class="col-12" style="display:none;">
-                    <div class="progress">
-                        <div id="divProgressBar" class="progress-bar progress-bar-striped" role="progressbar"></div>
+                    <div id="divTimeLeft" class="col-12" style="display:none;">
+                        <div class="progress">
+                            <div id="divProgressBar" class="progress-bar progress-bar-striped" role="progressbar"></div>
+                        </div>
+                        <div class="d-flex flex col-12 justify-content-center align-items-center">
+                            <div class="d-flex flex-column h-100 col-9 mt-3 align-items-center justify-content-center text-primary bg-light border border-primary border-1">
+                                <h4 class="mt-2">Time Remaining:</h4>
+                                <p id="txtTimeLeft">00:00:00</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 d-flex flex-column justify-content-center align-items-center">
                         <div class="d-flex flex-column flex-md-row text-primary col-12 align-items-center justify-content-center">
@@ -131,18 +139,24 @@ $(document).ready(function(){
                     },
                     success: function(result) {
                         let timeLimit = result.timeLimit / 1000000;
-                        console.log(activeSeconds + " " + timeLimit);
+                        let totalSeconds = result.timeLeft / 1000000;
+                        const remainingDate = new Date(null)
+                        remainingDate.setSeconds(totalSeconds);
+                        const timeLeftFormatted = remainingDate.toISOString().substring(11, 19);
+                        $('#txtTimeLeft').text(timeLeftFormatted);
                         if (running == true && timeLimit > 0 && activeSeconds >= timeLimit) {
                             running = false;
                             Swal.fire({
                                 icon: "info",
-                                text: "Simulation successfully shut down."
+                                text: "Simulation shut down."
                             });
 
                             $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
                             $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
+                            $('#btnClose').removeClass('btn-danger').addClass('btn-dark')
                             $('#btnPause').prop('disabled', true)
                             $('#btnResume').prop('disabled', true)
+                            $('#btnClose').prop('disabled', true)
                         }
                     }
                 })
@@ -181,11 +195,37 @@ $(document).ready(function(){
                 if (success.state == "running") {
                     $('#btnPause').prop('disabled', false)
                     $('#btnResume').prop('disabled', true)
+                    $('#btnPause').removeClass('btn-dark').addClass('btn-primary')
+                    $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
                 }
                 else {
                     $('#btnPause').prop('disabled', true)
                     $('#btnResume').prop('disabled', false)
+                    $('#btnResume').removeClass('btn-dark').addClass('btn-primary')
+                    $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
                 }
+                $.ajax({
+                    type: 'GET',
+                    url: 'http://' + location.host + '/getTimeLimit',
+                    error: function(e){
+                        console.log(e);
+                    },
+                    success: function(result){
+                        console.log(result);
+                        if (result.timeLimit > 0){
+                            $('#divTimeLeft').show()
+                        }
+                        else {
+                            $('#divTimeLeft').hide()
+                        }
+                    },
+                })
+            } else {
+                running = false;
+                $('#StartPage').show();
+                $('#ControlPanel').hide();
+                $('#divControlBody').hide();
+                $('#divTimeLeft').hide()
             }
         }
     })
@@ -234,13 +274,22 @@ $(document).ready(function(){
                                     running = true
                                     $('#StartPage').slideToggle(function(){
                                         $('#ControlPanel').slideToggle(function() {
-                                            $('#divControlBody').slideToggle();
+                                            if (timeLim <= 0) {
+                                                $('#divTimeLeft').hide();
+                                            }
+                                            $('#divControlBody').slideToggle(function(){
+                                                if (timeLim > 0){
+                                                    $('#divTimeLeft').slideToggle()
+                                                }
+                                            });
                                         });
                                     })
                                     $('#btnPause').removeClass('btn-dark').addClass('btn-primary')
                                     $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
+                                    $('#btnClose').removeClass('btn-dark').addClass('btn-danger')
                                     $('#btnPause').prop('disabled', false)
                                     $('#btnResume').prop('disabled', true)
+                                    $('#btnClose').prop('disabled', false)
                                 }
                             })
                         }
@@ -334,8 +383,10 @@ $(document).ready(function(){
                     })
                     $('#btnPause').removeClass('btn-primary').addClass('btn-dark')
                     $('#btnResume').removeClass('btn-primary').addClass('btn-dark')
+                    $('#btnClose').removeClass('btn-danger').addClass('btn-dark')
                     $('#btnPause').prop('disabled', true)
                     $('#btnResume').prop('disabled', true)
+                    $('#btnClose').prop('disabled', true)
                 }
             })
         }
