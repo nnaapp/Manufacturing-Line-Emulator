@@ -309,6 +309,31 @@ async fn getSimTime() -> ActixResult<impl Responder>
     Ok(web::Json(timesObj))
 }
 
+#[derive(Serialize)]
+struct RemainingTimeResponse
+{
+    time: u128
+}
+
+#[get("/getTimeLimit")]
+async fn getSimTimeLimit() -> ActixResult<impl Responder>
+{
+    let timeLimit = simTimerManager(false, None);
+    if timeLimit <= 0
+    {
+        return Ok(web::Json(RemainingTimeResponse { time: 0 }));
+    }
+
+    let timePassed = simClockManager(false, false, None).0; // Time unpaused, does not track paused time, .0 gets this
+    let timeLeft = timeLimit as u128 - timePassed;
+    if timeLeft > timeLimit as u128
+    {
+        return Ok(web::Json(RemainingTimeResponse { time: 0 }));
+    }
+
+    Ok(web::Json(RemainingTimeResponse { time: timeLeft }))
+}
+
 
 #[derive(Deserialize)]
 struct TimerQuery
@@ -344,6 +369,7 @@ pub async fn initWebServer() -> std::io::Result<()>
             .service(suspendSim)
             .service(setSimConfig)
             .service(getSimTime)
+            .service(getSimTimeLimit)
             .service(setSimTimer)
             .service(getSimState)
         })
