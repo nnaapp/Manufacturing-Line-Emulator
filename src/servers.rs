@@ -312,26 +312,33 @@ async fn getSimTime() -> ActixResult<impl Responder>
 #[derive(Serialize)]
 struct RemainingTimeResponse
 {
-    time: u128
+    timeLimit: u128,
+    timeLeft: u128,
+    percent: f64
 }
 
 #[get("/getTimeLimit")]
 async fn getSimTimeLimit() -> ActixResult<impl Responder>
 {
-    let timeLimit = simTimerManager(false, None);
+    let timeLimit = simTimerManager(false, None) as u128;
     if timeLimit <= 0
     {
-        return Ok(web::Json(RemainingTimeResponse { time: 0 }));
+        return Ok(web::Json(RemainingTimeResponse { timeLimit: timeLimit as u128, timeLeft: 0, percent: 100.0 }));
     }
 
-    let timePassed = simClockManager(false, false, None).0; // Time unpaused, does not track paused time, .0 gets this
+    let mut timePassed = simClockManager(false, false, None).0; // Time unpaused, does not track paused time, .0 gets this
+    if timePassed > timeLimit
+    {
+        timePassed = timeLimit;
+    }
+
     let timeLeft = timeLimit as u128 - timePassed;
     if timeLeft > timeLimit as u128
     {
-        return Ok(web::Json(RemainingTimeResponse { time: 0 }));
+        return Ok(web::Json(RemainingTimeResponse { timeLimit: timeLimit as u128, timeLeft: 0, percent: 100.0 }));
     }
 
-    Ok(web::Json(RemainingTimeResponse { time: timeLeft }))
+    Ok(web::Json(RemainingTimeResponse { timeLimit: timeLimit as u128, timeLeft, percent: timePassed as f64 / timeLimit as f64 * 100.0 }))
 }
 
 
