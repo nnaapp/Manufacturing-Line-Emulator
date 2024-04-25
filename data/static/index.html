@@ -32,7 +32,7 @@
                     </div> 
                     <div class="text-primary">
                         <label for="timeLim" class ='form-label mt-3' >Enter optional runtime in minutes, blank for continous:</label>
-                        <input type="number" class="col-12 form-control text-secondary text-center border border-primary" id="timeLim" placeholder="80"> 
+                        <input type="number" class="col-12 form-control text-secondary text-center border border-primary" id="timeLim" placeholder="Minutes"> 
                     </div>  
                 </form>
                 <button class="col-10 btn btn-lg btn-primary text-center mt-3" type="button" id="btnStart" data-status="start"> Start The Simulator </button>
@@ -313,6 +313,7 @@ $(document).ready(function(){
                     running = false
                     $('#divControlBody').slideToggle(function() {
                         $('#ControlPanel').slideToggle(function(){
+                            $('#divTimeLeft').hide();
                             $('#StartPage').slideToggle();
                         })
                     })
@@ -322,6 +323,7 @@ $(document).ready(function(){
         else {
             $('#divControlBody').slideToggle(function() {
                 $('#ControlPanel').slideToggle(function(){
+                    $('#divTimeLeft').hide();
                     $('#StartPage').slideToggle();
                 })
             })

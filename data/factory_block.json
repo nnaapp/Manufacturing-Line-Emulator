@@ -1,0 +1,240 @@
+{
+  "factory": {
+    "name": "N/A",
+    "description": "A simple manufacturing line for product assembly",
+    "simSpeed": 1.0,
+    "pollRateMs": 100,
+    "debounceRateInPolls": 10,
+    "machines": [
+      {
+          "id": "machine-0",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faults": [
+            {
+              "faultChance": 0.02,
+              "faultMessage": "Part got crushed.",
+              "faultTimeHighSec": 8.0,
+              "faultTimeLowSec": 2.0
+            },
+            {
+              "faultChance": 0.001,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHighSec": 9999.0,
+              "faultTimeLowSec": 9999.0
+            },
+            {
+              "faultChance": 0.03,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHighSec": 5.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.005,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHighSec": 240.0,
+              "faultTimeLowSec": 30.0
+            }
+          ],
+          "inputIDs": [
+          ], 
+          "inputBehavior": "SPAWNER", 
+          "inputSpeedMs": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeedMs": 1000,
+          "outputIDs": [
+            "belt-0toMiddleBelt",
+            "belt-0to2"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeedMs": 0,
+          "outputCapacity": 1,
+          "sensor": true,
+          "sensorBaseline": 325.0, 
+          "sensorVariance": 7.0
+        },
+        {
+          "id": "machine-1",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            }
+          ],
+          "inputIDs": [
+            "MiddleBelt-to1"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeedMs": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeedMs": 2000,
+          "outputIDs": [
+            "belt-1to3"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeedMs": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "sensorBaseline": 0.0,
+          "sensorVariance": 0.0
+        },
+        {
+          
+          "id": "machine-2",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.00,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            }
+          ],
+          "inputIDs": [
+            "belt-0to2"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeedMs": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeedMs": 2000,
+          "outputIDs": [
+            "belt-2to3"
+          ],
+          "outputBehavior": "DEFAULT",
+          "outputSpeedMs": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "sensorBaseline": 0.0,
+          "sensorVariance": 0.0
+        },
+        {
+          "id": "machine-3",
+          "cost": 1,
+          "throughput": 1,
+          "state": "PRODUCING",
+          "faults": [
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Default Fault Code.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine exploded.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine is jammed.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            },
+            {
+              "faultChance": 0.0,
+              "faultMessage": "Machine part is broken.",
+              "faultTimeHighSec": 10.0,
+              "faultTimeLowSec": 1.0
+            }
+          ],
+          "inputIDs": [
+            "belt-1to3",
+            "belt-2to3"
+          ], 
+          "inputBehavior": "DEFAULT", 
+          "inputSpeedMs": 0,
+          "inputCapacity": 1,
+          "processingBehavior": "DEFAULT",
+          "processingSpeedMs": 1000,
+          "outputBehavior": "DEFAULT",
+          "outputIDs": [
+          ],
+          "outputSpeedMs": 0,
+          "outputCapacity": 1,
+          "sensor": false,
+          "sensorBaseline": 0.0,
+          "sensorVariance": 0.0
+        }
+    ],
+    "conveyors": [
+      {
+        "id": "belt-0toMiddleBelt",
+        "capacity": 2,
+        "beltSpeedMs": 1000,
+        "inputID": null
+      },
+      {
+        "id": "MiddleBelt-to1",
+        "capacity": 3,
+        "beltSpeedMs": 1000,
+        "inputID": "belt-0toMiddleBelt"
+      },
+      {
+        "id": "belt-0to2",
+        "capacity": 5,
+        "beltSpeedMs": 1000,
+        "inputID": null
+      },
+      {
+        "id": "belt-1to3",
+        "capacity": 5,
+        "beltSpeedMs": 1000,
+        "inputID": null
+      },
+      {
+        "id": "belt-2to3",
+        "capacity": 5,
+        "beltSpeedMs": 1000,
+        "inputID": null
+      }
+    ]
+  }
+}
